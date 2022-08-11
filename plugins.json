@@ -1,0 +1,216 @@
+[
+    {
+        "iconUrl": "https://i.postimg.cc/WzQZFDPC/Anime-AV1.png",
+        "fileHash": "sha256-deae44cc5a45bf66077b8ba4ced92919cec6ca27b9ec31ecd09d612176d6288c",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 57319,
+        "status": 1,
+        "language": "mx",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "AnimeMovie",
+            "Anime",
+            "OVA"
+        ],
+        "version": 3,
+        "internalName": "AnimeAV1",
+        "description": "AnimeAV1 - Ver Anime en HD y Sub-Dub Espa\u00f1ol",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/AnimeAV1.cs3",
+        "name": "AnimeAV1"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=animeflv.one&sz=%size%",
+        "fileHash": "sha256-77a28919830af0c18a6b09578c347a02a605550114236fe4be72e17d008db6a2",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 23243,
+        "status": 0,
+        "language": "mx",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "AnimeMovie",
+            "Anime",
+            "OVA"
+        ],
+        "version": 3,
+        "internalName": "AnimeFLV",
+        "description": "(Espa\u00f1ol Latino) Anime/AnimeMovie/OVA en espa\u00f1ol latino y subtitulado",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/AnimeFLV.cs3",
+        "name": "AnimeFLV"
+    },
+    {
+        "iconUrl": "https://asiangirl.porn/favicon.ico",
+        "fileHash": "sha256-eba0b2fb20a155e8c7026a08a5af30116aa4703ace307f8694b42d20a7d0a77b",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 45686,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "NSFW"
+        ],
+        "version": 1,
+        "internalName": "AsianGirl",
+        "description": "Handpicked and free asian porn videos, huge collection of quality amateur China & Japan porn.",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/AsianGirl.cs3",
+        "name": "AsianGirl"
+    },
+    {
+        "iconUrl": "https://i.postimg.cc/HskwLYrk/hdfull.png",
+        "fileHash": "sha256-aa096565afd895215c8f93cc3bbe16114c8a440ff6ae1e171368b2e8aa72733e",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 71276,
+        "status": 0,
+        "language": "es",
+        "authors": [
+            "redblacker8",
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 3,
+        "internalName": "HDFull",
+        "description": "HDFull - (El Real) Tu lugar para ver peliculas y series",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/HDFull.cs3",
+        "name": "HDFull"
+    },
+    {
+        "iconUrl": "https://i.postimg.cc/RFw58jKv/hentaila.png",
+        "fileHash": "sha256-ebd4a6ba7c9e8c31b4a5826f89bfdda61ae19a9ea419a42fc1161f31a7c3533c",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 58394,
+        "status": 1,
+        "language": "es",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "NSFW"
+        ],
+        "version": 3,
+        "internalName": "HentaiLA",
+        "description": "HentaiLa, Disfruta del mejor hentai en espa\u00f1ol, sin censura y organizado por categor\u00edas",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/HentaiLA.cs3",
+        "name": "HentaiLA"
+    },
+    {
+        "iconUrl": "https://mangoporn.net/wp-content/uploads/2024/07/cropped-mangoporn-favicon.png",
+        "fileHash": "sha256-fa2c35a824b7322f47824059987a9c50e1d4125eae786fb2438d33ca43c02447",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 54550,
+        "status": 1,
+        "language": "en",
+        "authors": [
+            "kraptor",
+            "ByAyzen",
+            "HindiProvider",
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "NSFW"
+        ],
+        "version": 2,
+        "internalName": "MangoPorn",
+        "description": "Watch Mango Porn Movies Online Free",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/MangoPorn.cs3",
+        "name": "MangoPorn"
+    },
+    {
+        "iconUrl": "https://missav.ws/missav/logo-square.png",
+        "fileHash": "sha256-657d1f4a0344125c62c8a2115a129f0bd379e2181018c2243afba736e85c01ec",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 58406,
+        "status": 1,
+        "language": "ja",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "NSFW"
+        ],
+        "version": 4,
+        "internalName": "MissAV",
+        "description": "Best Japan AV, free forever, high speed, no lag, over 100,000 videos, daily update.",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/MissAV.cs3",
+        "name": "MissAV"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=pelisplushd.bz&sz=%size%",
+        "fileHash": "sha256-865ec4d46b68ace8eeb5efc0ea93996290f79a64aabd4f43233b984aef469c79",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 64354,
+        "status": 1,
+        "language": "mx",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "version": 5,
+        "internalName": "PelisPlusHD",
+        "description": "PelisplusHD | Tu Portal de Pel\u00edculas y Series en Espa\u00f1ol y SubEsp",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/PelisPlusHD.cs3",
+        "name": "PelisPlusHD"
+    },
+    {
+        "iconUrl": "https://sololatino.net/images/logo.png",
+        "fileHash": "sha256-f411c3306454b074182fdb77dc1fe18ecbb583c46a539255036bddac8a300a8f",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 69130,
+        "status": 1,
+        "language": "mx",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "AsianDrama",
+            "Cartoon",
+            "Anime"
+        ],
+        "version": 6,
+        "internalName": "SoloLatino",
+        "description": "Pel\u00edculas, series y animes gratis en espa\u00f1ol Latino. M\u00e1s de 19,000 t\u00edtulos sin cortes ni registro.",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/SoloLatino.cs3",
+        "name": "SoloLatino"
+    },
+    {
+        "iconUrl": "https://www.google.com/s2/favicons?domain=srnovelas.com&sz=%size%",
+        "fileHash": "sha256-9873f2b76a0715a3fb9578e79fe192d10ffe0a0125553695f3facdfc20e9be90",
+        "apiVersion": 1,
+        "repositoryUrl": "https://github.com/Freitez93/TestPlugins-CS",
+        "fileSize": 12959,
+        "status": 1,
+        "language": "mx",
+        "authors": [
+            "Freitez93"
+        ],
+        "tvTypes": [
+            "TvSeries"
+        ],
+        "version": 1,
+        "internalName": "SrNovelas",
+        "description": "Series/Novelas en Espa\u00f1ol Latino",
+        "url": "https://raw.githubusercontent.com/Freitez93/TestPlugins-CS/builds/SrNovelas.cs3",
+        "name": "SrNovelas"
+    }
+]
