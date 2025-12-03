@@ -1,10 +1,14 @@
 package com.animeflv
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.fasterxml.jackson.annotation.JsonProperty
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class AnimeFLV : MainAPI() {
     companion object {
@@ -31,7 +35,7 @@ class AnimeFLV : MainAPI() {
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
     override val hasQuickSearch = true
-    override val supportedTypes = setOf(TvType.AnimeMovie, TvType.OVA, TvType.Anime)
+    override val supportedTypes = setOf(TvType.Anime, TvType.AnimeMovie, TvType.OVA)
 
     override val mainPage = mainPageOf(
         Pair("", "Últimos episodios"),
@@ -193,8 +197,13 @@ class AnimeFLV : MainAPI() {
                     val serversJson = serversRegex.find(script.data())?.destructured?.component1()
                         ?: return@amap
                     val servers = parseJson<MainServers>(serversJson)
-                    servers.sub.amap { server ->
-                        loadExtractor(server.code, data, subtitleCallback, callback)
+                    // Processa los enlaces SUB si existen
+                    servers.sub?.forEach { server ->
+                        loadSourceNameExtractor("SUB", server.code, data, subtitleCallback, callback)
+                    }
+                    // Processa los enlaces LAT si existen
+                    servers.lat?.forEach { server ->
+                        loadSourceNameExtractor("LAT", server.code, data, subtitleCallback, callback)
                     }
                 }
             }
@@ -205,8 +214,12 @@ class AnimeFLV : MainAPI() {
     }
 }
 
-data class MainServers(@JsonProperty("SUB") val sub: List<Sub>)
+// Data class
 data class Sub(val code: String)
+data class MainServers(
+    @JsonProperty("SUB") val sub: List<Sub>? = null,
+    @JsonProperty("LAT") val lat: List<Sub>? = null,
+)
 data class SearchObject(
     @JsonProperty("id") val id: String,
     @JsonProperty("title") val title: String,
@@ -214,3 +227,30 @@ data class SearchObject(
     @JsonProperty("last_id") val lastId: String,
     @JsonProperty("slug") val slug: String
 )
+
+// Funcion Auxiliar para Servers con Lenguages.
+suspend fun loadSourceNameExtractor(
+    source: String,
+    url: String,
+    referer: String? = null,
+    subtitleCallback: (SubtitleFile) -> Unit,
+    callback: (ExtractorLink) -> Unit,
+) {
+    loadExtractor(url, referer, subtitleCallback) { link ->
+        CoroutineScope(Dispatchers.IO).launch {
+            callback.invoke(
+                newExtractorLink(
+                    "$source [${link.source}]",
+                    "$source [${link.source}]",
+                    link.url,
+                ) {
+                    this.quality = link.quality
+                    this.type = link.type
+                    this.referer = link.referer
+                    this.headers = link.headers
+                    this.extractorData = link.extractorData
+                }
+            )
+        }
+    }
+}

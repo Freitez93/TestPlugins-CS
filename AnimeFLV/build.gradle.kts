@@ -1,11 +1,11 @@
 // use an integer for version numbers
-version = 2
+version = 3
 
 
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "(Español Latino) AnimeMovie/Anime/OVA con subtitulos Extension"
+    description = "(Español Latino) Anime/AnimeMovie/OVA en español latino y subtitulado"
     language    = "mx"
     authors = listOf("Freitez93")
 
