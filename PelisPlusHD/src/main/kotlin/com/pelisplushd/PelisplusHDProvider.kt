@@ -8,7 +8,7 @@ import android.content.Context
 class Animeav1Provider: Plugin() {
     override fun load(context: Context) {
         // All providers should be added in this manner. Please don't edit the providers list directly.
-        registerMainAPI(PelisPlusHD2())
+        registerMainAPI(PelisPlusHD())
         registerExtractorAPI(FileMoonlink())
         registerExtractorAPI(StreamwishHG())
         registerExtractorAPI(UqLoadCX())
