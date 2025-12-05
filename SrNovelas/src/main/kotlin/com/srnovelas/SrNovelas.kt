@@ -2,18 +2,11 @@ package com.srnovelas
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.mvvm.debugPrint
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.newExtractorLink
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import com.lagradost.cloudstream3.utils.TestingUtils.Logger
 import com.fasterxml.jackson.annotation.JsonProperty
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.jsoup.nodes.Element
 
 class SrNovelas : MainAPI() {
@@ -52,13 +45,6 @@ class SrNovelas : MainAPI() {
         )
     }
 
-    //override suspend fun search(query: String): List<SearchResponse> {
-    //    val document = app.get("$mainUrl/?s=$query").documentLarge
-    //    return document.select(".content-area > article").filter { it -> 
-    //        !it.select("p[class=entry-title]").text().contains("Capitulo")
-    //    }.mapNotNull { it.toSearchResult() }
-    //}
-
     override suspend fun search(query: String, page: Int): SearchResponseList? {
         val searchURL = if (page > 1) "/page/$page/?s=$query" else "$mainUrl/?s=$query"
         val searchDOC = app.get(searchURL).documentLarge
@@ -82,13 +68,11 @@ class SrNovelas : MainAPI() {
         val title = document.selectFirst("article h1")?.text()
             ?.replace(" Serie", "")
             ?: "Titulo no Encontrado"
-        //val description = document.selectFirst("meta[property='og:description']")?.attr("content")
         val description = document.selectFirst(".the-content p")?.text()
             ?.replace("&nbsp;", " ")
             ?.replace(Regex("\\s+"), " ")?.trim()
             ?: "Trama No Encontrada"
         val poster = document.selectFirst("meta[property='og:image']")?.attr("content")
-        //val tags = 
 
         // Si es una Serie, Dorama o Anime
         if (isType != TvType.Movie) {
@@ -114,7 +98,6 @@ class SrNovelas : MainAPI() {
             this.backgroundPosterUrl = poster
             this.posterUrl = poster
             this.plot = description
-            //this.tags = tags
         }
     }
 
