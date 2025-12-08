@@ -10,7 +10,7 @@ import kotlin.collections.getOrNull
 suspend fun getMeta_TMDb(id: String?, type: TvType): getMetaResponse? {
     val tmdbType = if (type == TvType.Movie) "movie" else "tv"
     val params = mapOf(
-        "api_key" to BuildConfig.TMDb_API,
+        "api_key" to BuildConfig.TMDB_API,
         "language" to "es-MX",
         "append_to_response" to "credits,external_ids,videos,production_countries,alternative_titles"
     )
@@ -71,13 +71,13 @@ suspend fun getTMDbID_From_IMDbID(IMDb_ID: String, type: TvType): String? {
     if (!IMDb_ID.startsWith("tt")) return null
     val tmdbUrl = "https://api.themoviedb.org/3/find/$IMDb_ID"
     val params = mapOf(
-        "api_key" to BuildConfig.TMDb_API,
+        "api_key" to BuildConfig.TMDB_API,
         "external_source" to "imdb_id"
     )
     return try {
         val findResponse = app.get(tmdbUrl, params = params).parsedSafe<TMDbFindResponse>()
-        if (type == TvType.Movie){
-            findResponse?.movieResults?.getOrNull(0)?.id.toString()
+        if (type == TvType.Movie) {
+            findResponse?.movieResults?.getOrNull(0)?.id?.toString()
         } else {
             findResponse?.tvResults?.getOrNull(0)?.id?.toString()
         }
@@ -89,7 +89,7 @@ suspend fun getTMDbID_From_IMDbID(IMDb_ID: String, type: TvType): String? {
 // Lista de Episodios
 suspend fun getEpisodesList(TMDb_ID: String, season: ArrayList<TMDbSeasons>): ArrayList<TMDbApiSeasonRes.Episodes>? {
     val params = mapOf(
-        "api_key" to BuildConfig.TMDb_API,
+        "api_key" to BuildConfig.TMDB_API,
         "language" to "es-MX"
     )
     return try {

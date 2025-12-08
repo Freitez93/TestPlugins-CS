@@ -1,6 +1,5 @@
 package com.pelisplushd
 
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -83,7 +82,6 @@ class PelisPlusHD : MainAPI() {
                     it.season == season && it.episode == episode 
                 }
 
-                Log.d("Freitez93", videoInfo?.still_path.toString())
                 episodes.add(
                     newEpisode(href) {
                         this.name = videoInfo?.name ?: _name
