@@ -1,4 +1,3 @@
-@file:Suppress("UnstableApiUsage")
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
@@ -10,10 +9,13 @@ android {
         viewBinding = true
     }
     defaultConfig {
-        val properties = Properties()
+        namespace = "com.pelisplushd"
+
         // Cargar la API Key desde local.properties, variable de entorno o propiedad de Gradle
+        val properties = Properties()
         properties.load(project.rootProject.file("local.properties").inputStream())
         android.buildFeatures.buildConfig=true
+
         // Exponer la API key como BuildConfig.TMDB_API
         buildConfigField("String", "TMDB_API", "\"${properties.getProperty("TMDB_API")}\"")
     }
