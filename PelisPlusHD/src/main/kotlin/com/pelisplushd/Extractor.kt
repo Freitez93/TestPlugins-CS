@@ -1,6 +1,5 @@
 package com.pelisplushd
 
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.extractors.FilemoonV2
 import com.lagradost.cloudstream3.extractors.StreamWishExtractor
@@ -15,7 +14,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
+import org.json.*
 
 class FileMoonlink : FilemoonV2() {
     override var mainUrl = "https://filemoon.link"

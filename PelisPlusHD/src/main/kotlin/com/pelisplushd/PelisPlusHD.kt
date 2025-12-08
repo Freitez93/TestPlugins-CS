@@ -2,14 +2,14 @@ package com.pelisplushd
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.lagradost.cloudstream3.LoadResponse.Companion.addImdbId
+import com.lagradost.cloudstream3.LoadResponse.Companion.addTMDbId
+import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.collections.getOrNull
 import org.jsoup.nodes.Element
 
 class PelisPlusHD : MainAPI() {
@@ -22,7 +22,7 @@ class PelisPlusHD : MainAPI() {
     override val supportedTypes = setOf(TvType.Movie, TvType.TvSeries, TvType.AsianDrama, TvType.Anime)
 
     override val mainPage = mainPageOf(
-        Pair("$mainUrl/year/2025", "Últimos episodios"),
+        Pair("$mainUrl/year/2025", "Últimos agregados"),
         Pair("$mainUrl/peliculas/populares", "Películas"),
         Pair("$mainUrl/series/populares", "Series"),
         Pair("$mainUrl/generos/dorama", "Doramas"),
@@ -36,9 +36,9 @@ class PelisPlusHD : MainAPI() {
         val searchURL = if (page > 1) "${request.data}?page=$page" else request.data
         val document = app.get(searchURL).documentLarge
         val hasNextPage = document.selectFirst(".page-link[rel=next]")?.attr("href") != null
-        val home = document.select(".Posters > a")
-            .filter { it -> !it.attr("target").equals("_blank", ignoreCase = true) }
-            .mapNotNull { it.toSearchResult() }
+        val home = document.select(".Posters > a").filter { it -> 
+            !it.attr("target").equals("_blank", ignoreCase = true) 
+        }.mapNotNull { it.toSearchResult() }
         return newHomePageResponse(
             list = listOf(createHomePageList(request.name, home, false)),
             hasNext = hasNextPage
@@ -54,25 +54,45 @@ class PelisPlusHD : MainAPI() {
         val document = app.get(url).documentLarge
         val episodes = ArrayList<Episode>()
         val isType = getType(url)
+        val imdb = getImdb(document, isType)
+        val meta = getMeta_TMDb(imdb, isType)
 
         // Recolectamos la Información de la Película/Serie/Dorama/Anime
-        val title = fixTitle(document.selectFirst(".m-b-5")?.text() ?: "Título desconocido")
+        val (_title, _year) = fixTitle(document.selectFirst(".m-b-5")?.text() ?: "Título desconocido")
+        val title = when {
+            meta?.title != null && meta.title == meta.orgTitle -> _title
+            else -> meta?.title?.takeIf { it.isNotBlank() } ?: _title
+        }
+        val year = meta?.releaseDate?.substringBefore("-")?.toIntOrNull() ?: _year
         val description = document.selectFirst("div.text-large")?.text()?.trim()
-        val poster = document.selectFirst("meta[itemprop=image]")?.attr("content")
-        val tags = document.select(".p-h-15.text-center a span.font-size-18.text-info.text-semibold")
-            .map { it.text().trim() }
+        val score = document.selectFirst("span.ion-md-star")?.text()?.split("/")?.getOrNull(0)?.trim()
+        val tags = document.select(".p-v-20 > a > span").map { it.text().trim() }
+        val imgPt = document.selectFirst("meta[itemprop=image]")?.attr("content")
+        val imgBg = meta?.backgroundUrl ?: "https://images.metahub.space/background/small/$imdb/img"
 
         // Si es una Serie, Dorama o Anime
         if (isType != TvType.Movie) {
+            val videos = meta?.episodes
             document.select("div.tab-pane .btn").map { li ->
                 val href = li.selectFirst("a")?.attr("href") ?: return@map
                 val btnEp = li.selectFirst(".btn-primary.btn-block")?.text() ?: ": Episodio Sin Nombre"
-                val (season, episode, name) = parseEpisodeTitle(btnEp)
+                val (season, episode, _name) = parseEpisodeTitle(btnEp)
+                
+                // Buscar el video que coincida con season y episode
+                val videoInfo = videos?.firstOrNull { 
+                    it.season == season && it.episode == episode 
+                }
+
+                Log.d("Freitez93", videoInfo?.still_path.toString())
                 episodes.add(
                     newEpisode(href) {
-                        this.name = name
+                        this.name = videoInfo?.name ?: _name
                         this.season = season
                         this.episode = episode
+                        this.description = videoInfo?.overview
+                        this.runTime = videoInfo?.runtime
+                        this.posterUrl = videoInfo?.still_path?.replace("/original/", "/w500/")
+                        videoInfo?.air_date?.let { addDate(it) }
                     }
                 )
             }
@@ -81,24 +101,48 @@ class PelisPlusHD : MainAPI() {
         return when (isType) {
             TvType.TvSeries -> {
                 newTvSeriesLoadResponse(title, url, isType, episodes) {
-                    this.posterUrl = poster
-                    this.plot = description
-                    this.tags = tags
+                    addImdbId(meta?.imdb_id ?: imdb)
+                    addTMDbId(meta?.tmdb_id)
+                    addTrailer(meta?.trailers)
+                    this.backgroundPosterUrl = imgBg
+                    this.posterUrl = meta?.posterUrl ?: imgPt
+                    this.score = Score.from10(meta?.score ?: score)
+                    this.plot = meta?.plot ?: description
+                    this.year = year
+                    this.showStatus = getStatus(meta?.status)
+                    this.tags = meta?.genres ?: tags
+                    this.actors = meta?.actors
                 }
             }
             TvType.Anime -> {
                 newAnimeLoadResponse(title, url, isType) {
-                    this.posterUrl = poster
+                    addImdbId(meta?.imdb_id ?: imdb)
+                    addTMDbId(meta?.tmdb_id)
+                    addTrailer(meta?.trailers)
                     addEpisodes(DubStatus.Dubbed, episodes.reversed())
-                    this.plot = description
-                    this.tags = tags
+                    this.backgroundPosterUrl = imgBg
+                    this.posterUrl = meta?.posterUrl ?: imgPt
+                    this.score = Score.from10(meta?.score ?: score)
+                    this.plot = meta?.plot ?: description
+                    this.year = year
+                    this.showStatus = getStatus(meta?.status)
+                    this.tags = meta?.genres ?: tags
+                    this.actors = meta?.actors
                 }
             }
             TvType.Movie -> {
                 newMovieLoadResponse(title, url, isType, url) {
-                    this.posterUrl = poster
-                    this.plot = description
-                    this.tags = tags
+                    addImdbId(meta?.imdb_id ?: imdb)
+                    addTMDbId(meta?.tmdb_id)
+                    addTrailer(meta?.trailers)
+                    this.backgroundPosterUrl = imgBg
+                    this.posterUrl = meta?.posterUrl ?: imgPt
+                    this.score = Score.from10(meta?.score ?: score)
+                    this.plot = meta?.plot ?: description
+                    this.year = year
+                    this.duration = meta?.runtime
+                    this.tags = meta?.genres ?: tags
+                    this.actors = meta?.actors
                 }
             }
             else -> null
@@ -124,7 +168,6 @@ class PelisPlusHD : MainAPI() {
                     videoUrls.add(url)
                 }
 
-                Log.d("Debug", videoUrls.toJson())
                 // Procesar cada URL según el servicio
                 videoUrls.forEach { url ->
                     when {
@@ -181,16 +224,37 @@ class PelisPlusHD : MainAPI() {
         }
     }
 
+    // Funcíon para el estado de la serie.
+    fun getStatus(t: String?): ShowStatus {
+        return when (t) {
+            "Returning Series" -> ShowStatus.Ongoing
+            "Released" -> ShowStatus.Ongoing
+            else -> ShowStatus.Completed
+        }
+    }
+
     // Función para convertir un elemento HTML a SearchResponse
     private fun Element.toSearchResult(): SearchResponse {
-        val title = fixTitle(this.select(".listing-content > p").text())
+        val (title, year) = fixTitle(this.select(".listing-content > p").text())
         val href = this.select("a").attr("href")
         val posterUrl = fixUrl(this.select("img").attr("src"))
         val isType = getType(href)
         return when (isType) {
-            TvType.Movie -> newMovieSearchResponse(title, href, isType) { this.posterUrl = posterUrl }
-            TvType.Anime -> newAnimeSearchResponse(title, href, isType) { this.posterUrl = posterUrl }
-            else -> newTvSeriesSearchResponse(title, href, isType) { this.posterUrl = posterUrl }
+            TvType.Movie -> newMovieSearchResponse(title, href, isType) {
+                this.posterUrl = posterUrl
+                this.year = year
+                this.type = isType
+            }
+            TvType.Anime -> newAnimeSearchResponse(title, href, isType) {
+                this.posterUrl = posterUrl
+                this.year = year
+                this.type = isType
+            }
+            else -> newTvSeriesSearchResponse(title, href, isType) {
+                this.posterUrl = posterUrl
+                this.year = year
+                this.type = isType
+            }
         }
     }
 
@@ -200,25 +264,32 @@ class PelisPlusHD : MainAPI() {
         return urlRegex.findAll(scriptData).map { it.value }.toList()
     }
 
-    // Función para decodificar base64
-    private fun base64Decode(input: String): String {
-        return try {
-            String(android.util.Base64.decode(input, android.util.Base64.DEFAULT))
-        } catch (e: Exception) {
-            input // Devuelve el input original si falla la decodificación
+    // Función para extraer el IMDb-ID
+    private suspend fun getImdb(input: org.jsoup.nodes.Document, type: TvType): String? {
+        var document = input
+        if (type != TvType.Movie) {
+            val getEpUrl = input.selectFirst("div[role=tabpanel] a")?.attr("href")
+            if (getEpUrl != null) {
+                document = app.get(getEpUrl).documentLarge
+            }
+        }
+        return document.selectFirst("script:containsData(var video = [];)")?.data()?.let { text: String ->
+            imdbUrlToId(text.toString())
         }
     }
 
-    // Función para quitar el (Año) de los títulos
-    private fun fixTitle(title: String?): String {
-        return title?.replace(Regex("( \\(\\d{4}\\))"), "")?.trim() ?: "$title"
-    }
+    // Función para quitar el (Año) de los títulos y devolver ("Titulo", año)
+    private fun fixTitle(title: String?): Pair<String, Int?> {
+        return if (title == null) {
+            Pair("", null)
+        } else {
+            // Usar expresión regular para extraer el año entre paréntesis
+            val regex = Regex("\\((\\d{4})\\)")
+            val year = regex.find(title)?.groupValues?.get(1)?.toIntOrNull()
+            val cleanTitle = title.replace(regex, "").trim()
 
-    // Función para arreglar el nombre de los episodios
-    private fun fixTitleEp(title: String?): String {
-        return title?.split(':')?.getOrElse(1) { 
-            title.split(':').getOrNull(0) ?: "Episodio desconocido" 
-        }?.trim() ?: "Episodio desconocido"
+            Pair(cleanTitle, year)
+        }
     }
 
     // Función para arreglar el nombre de los episodios
