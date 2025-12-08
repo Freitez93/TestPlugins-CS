@@ -7,10 +7,11 @@ import kotlin.collections.getOrNull
 //-------------------------------------//
 //        MetaProvider TMDb            //
 //-------------------------------------//
+private val apiKey = BuildConfig.TMDB_API
 suspend fun getMeta_TMDb(id: String?, type: TvType): getMetaResponse? {
     val tmdbType = if (type == TvType.Movie) "movie" else "tv"
     val params = mapOf(
-        "api_key" to BuildConfig.TMDB_API,
+        "api_key" to "$apiKey",
         "language" to "es-MX",
         "append_to_response" to "credits,external_ids,videos,production_countries,alternative_titles"
     )
@@ -71,7 +72,7 @@ suspend fun getTMDbID_From_IMDbID(IMDb_ID: String, type: TvType): String? {
     if (!IMDb_ID.startsWith("tt")) return null
     val tmdbUrl = "https://api.themoviedb.org/3/find/$IMDb_ID"
     val params = mapOf(
-        "api_key" to BuildConfig.TMDB_API,
+        "api_key" to "$apiKey",
         "external_source" to "imdb_id"
     )
     return try {
@@ -89,7 +90,7 @@ suspend fun getTMDbID_From_IMDbID(IMDb_ID: String, type: TvType): String? {
 // Lista de Episodios
 suspend fun getEpisodesList(TMDb_ID: String, season: ArrayList<TMDbSeasons>): ArrayList<TMDbApiSeasonRes.Episodes>? {
     val params = mapOf(
-        "api_key" to BuildConfig.TMDB_API,
+        "api_key" to "$apiKey",
         "language" to "es-MX"
     )
     return try {
