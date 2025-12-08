@@ -2,11 +2,8 @@ package com.srnovelas
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.newExtractorLink
-import com.fasterxml.jackson.annotation.JsonProperty
 import org.jsoup.nodes.Element
 
 class SrNovelas : MainAPI() {
