@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.collections.getOrNull
 import org.jsoup.nodes.Element
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 class PelisPlusHD : MainAPI() {
     override var mainUrl = "https://pelisplushd.bz"
@@ -26,7 +28,7 @@ class PelisPlusHD : MainAPI() {
         Pair("$mainUrl/series/populares", "Series"),
         Pair("$mainUrl/generos/dorama", "Doramas"),
         Pair("$mainUrl/animes/populares", "Animes")
-    )
+    ) 
 
     override suspend fun getMainPage(
         page: Int,
@@ -89,6 +91,7 @@ class PelisPlusHD : MainAPI() {
                         this.episode = episode
                         this.description = videoInfo?.overview
                         this.runTime = videoInfo?.runtime
+                        this.score = Score.from10(videoInfo?.vote_average)
                         this.posterUrl = videoInfo?.still_path?.replace("/original/", "/w500/")
                         videoInfo?.air_date?.let { addDate(it) }
                     }
@@ -108,6 +111,19 @@ class PelisPlusHD : MainAPI() {
                     this.plot = meta?.plot ?: description
                     this.year = year
                     this.showStatus = getStatus(meta?.status)
+                    this.nextAiring = meta?.nextAiring?.let { nextAiring ->
+                        val airDate = nextAiring.air_date ?: return@let null
+                        val unixTime = try {
+                            LocalDate.parse(airDate).atStartOfDay(ZoneOffset.UTC).toEpochSecond()
+                        } catch (e: Exception) {
+                            null
+                        } ?: return@let null
+                        NextAiring(
+                            episode = nextAiring.episode_number ?: return@let null,
+                            //season = nextAiring.season_number ?: return@let null,
+                            unixTime = unixTime
+                        )
+                    }
                     this.tags = meta?.genres ?: tags
                     this.actors = meta?.actors
                 }
@@ -236,22 +252,25 @@ class PelisPlusHD : MainAPI() {
         val (title, year) = fixTitle(this.select(".listing-content > p").text())
         val href = this.select("a").attr("href")
         val posterUrl = fixUrl(this.select("img").attr("src"))
+        val score = this.select(".stars span").text().let {
+            it.split("/").getOrNull(0)
+        }
         val isType = getType(href)
         return when (isType) {
             TvType.Movie -> newMovieSearchResponse(title, href, isType) {
                 this.posterUrl = posterUrl
                 this.year = year
-                this.type = isType
+                this.score = Score.from10(score)
             }
             TvType.Anime -> newAnimeSearchResponse(title, href, isType) {
                 this.posterUrl = posterUrl
                 this.year = year
-                this.type = isType
+                this.score = Score.from10(score)
             }
             else -> newTvSeriesSearchResponse(title, href, isType) {
                 this.posterUrl = posterUrl
                 this.year = year
-                this.type = isType
+                this.score = Score.from10(score)
             }
         }
     }

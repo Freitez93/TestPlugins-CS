@@ -100,5 +100,12 @@ suspend fun decryptLinks(url: String): Map<String, List<String>> {
     return allLinksByLanguage
 }
 
-data class Link(val index: Long, val link: String)
-data class Loadlinks(val success: Boolean, val links: List<Link>)
+data class Loadlinks(
+    val success: Boolean,
+    val links: List<Link>
+) {
+    data class Link(
+        val index: Long, 
+        val link: String
+    )
+}
