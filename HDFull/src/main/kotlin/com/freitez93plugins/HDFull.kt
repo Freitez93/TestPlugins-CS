@@ -106,13 +106,13 @@ class HDFullProvider(sharedPref: SharedPreferences? = null) : MainAPI() {
     override suspend fun load(url: String): LoadResponse? {
         val document = app.get(url, cookies = latestCookie).document
         val title = document.selectFirst("meta[property='og:title']")!!.attr("content")
-        val backimage = document.selectFirst("meta[name='twitter:image']")!!.attr("content")
-        val poster = document.selectFirst("meta[property='og:image']")!!.attr("content")
-        val description = document.selectFirst("meta[property='og:description']")!!.attr("content")
+        val backimage = document.selectFirst("meta[name='twitter:image']")?.attr("content")
+        val poster = document.selectFirst("meta[property='og:image']")?.attr("content")
+        val description = document.selectFirst("meta[property='og:description']")?.attr("content")
         val tags = document.select("a[itemprop=genre]").map { it.text() }
         val year = document.selectFirst("a[href*='/buscar/year']")?.text().let { it?.toIntOrNull() }
         val score = document.selectFirst("meta[itemprop='ratingValue']")?.attr("content")
-        val imdb = document.selectFirst("a[href*=imdb]")!!.attr("href").let { imdbUrlToId(it) }
+        val imdb = document.selectFirst("a[href*=imdb]")?.attr("href")?.let { imdbUrlToId(it) }
 
         val isAnime = tags.find { it == "Anime" }
         val isType = if (!isAnime.isNullOrEmpty()) TvType.Anime else getType(url)
