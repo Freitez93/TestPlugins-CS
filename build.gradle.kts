@@ -42,7 +42,7 @@ subprojects {
     }
 
     android {
-        namespace = "com.freitez93"
+        namespace = "com.freitez93plugins"
 
         defaultConfig {
             minSdk = 21
