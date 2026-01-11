@@ -1,4 +1,4 @@
-package com.freitez93plugins
+package com.hdfull
 
 import android.util.Base64
 import android.util.Log
@@ -27,6 +27,9 @@ class HDFullProvider(sharedPref: SharedPreferences? = null) : MainAPI() {
         TvType.Movie,
         TvType.TvSeries,
     )
+
+    // Iniciamos interfaz de TMDb
+    val tmdb = TMDb(lang)
 
     // Datos de Inicio de Sesion
     val guid = sharedPref?.getString("guid", null)
@@ -116,7 +119,7 @@ class HDFullProvider(sharedPref: SharedPreferences? = null) : MainAPI() {
 
         val isAnime = tags.find { it == "Anime" }
         val isType = if (!isAnime.isNullOrEmpty()) TvType.Anime else getType(url)
-        val meta = getMeta_TMDb(imdb, isType)
+        val meta = tmdb.getDetails(imdb, isType)
 
         var episodes = if (isType != TvType.Movie) {
             val sid = document.html().substringAfter("var sid = '").substringBefore("';")

@@ -1,8 +1,8 @@
-package com.freitez93plugins
+package com.hdfull
 
 import android.content.Context
 import androidx.appcompat.app.AppCompatActivity
-import com.freitez93plugins.settings.SettingsFragment
+import com.hdfull.settings.SettingsFragment
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
 import com.lagradost.cloudstream3.plugins.Plugin
 

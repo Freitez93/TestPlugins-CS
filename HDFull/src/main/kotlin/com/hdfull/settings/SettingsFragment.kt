@@ -1,4 +1,4 @@
-package com.freitez93plugins.settings
+package com.hdfull.settings
 
 import android.util.Log
 import android.annotation.SuppressLint
@@ -21,8 +21,8 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.lagradost.cloudstream3.CommonActivity.showToast
-import com.freitez93plugins.BuildConfig
-import com.freitez93plugins.HDFullPlugin
+import com.hdfull.BuildConfig
+import com.hdfull.HDFullPlugin
 
 class SettingsFragment(
     plugin: HDFullPlugin,

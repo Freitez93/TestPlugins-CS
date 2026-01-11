@@ -1,4 +1,4 @@
-package com.freitez93plugins
+package com.hdfull
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils

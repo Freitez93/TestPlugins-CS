@@ -3,9 +3,10 @@
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
-version = 2
+version = 3
 
 android {
+    namespace = "com.hdfull"
     buildFeatures {
         buildConfig = true
         viewBinding = true
@@ -34,7 +35,7 @@ cloudstream {
     status = 1 // will be 3 if unspecified
     tvTypes = listOf("Movie", "TvSeries")
 
-    iconUrl = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-RADfsCCyE58WSuVLAV-acnlFZdPgTFxq_Q&s"
+    iconUrl = "https://i.postimg.cc/HskwLYrk/hdfull.png"
     requiresResources = true
 }
 
