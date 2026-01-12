@@ -12,6 +12,7 @@ import kotlin.collections.getOrNull
 import org.jsoup.nodes.Element
 import java.time.LocalDate
 import java.time.ZoneOffset
+import android.util.Log
 
 class PelisPlusHD : MainAPI() {
     override var mainUrl = "https://pelisplushd.bz"
@@ -28,7 +29,10 @@ class PelisPlusHD : MainAPI() {
         Pair("$mainUrl/series/populares", "Series"),
         Pair("$mainUrl/generos/dorama", "Doramas"),
         Pair("$mainUrl/animes/populares", "Animes")
-    ) 
+    )
+
+    // Iniciamos interfaz de TMDb
+    val tmdb = TMDb("es-MX")
 
     override suspend fun getMainPage(
         page: Int,
@@ -56,7 +60,7 @@ class PelisPlusHD : MainAPI() {
         val episodes = ArrayList<Episode>()
         val isType = getType(url)
         val imdb = getImdb(document, isType)
-        val meta = getMeta_TMDb(imdb, isType)
+        val meta = tmdb.getDetails(imdb, isType)
 
         // Recolectamos la Información de la Película/Serie/Dorama/Anime
         val (_title, _year) = fixTitle(document.selectFirst(".m-b-5")?.text() ?: "Título desconocido")
@@ -172,39 +176,40 @@ class PelisPlusHD : MainAPI() {
         return withContext(Dispatchers.IO) {
             try {
                 val document = app.get(data).documentLarge
-                val scriptContent = document.selectFirst("script:containsData(var video = [];)")?.data() ?: return@withContext false
+                val scriptContent = document.selectFirst("script:containsData(var video = [];)")?.data()
+                    ?: return@withContext false
 
                 // Extraer todas las URLs del arreglo 'video'
-                val videoUrls = mutableListOf<String>()
-                val regex = Regex("video\\[(\\d+)\\]\\s*=\\s*'([^']+)'")
-                regex.findAll(scriptContent).forEach { matchResult ->
-                    val url = matchResult.groupValues[2]
-                    videoUrls.add(url)
-                }
+                //val videoUrls = mutableListOf<String>()
+                //val regex = Regex("video\\[(\\d+)\\]\\s*=\\s*'([^']+)'")
+                //regex.findAll(scriptContent).forEach { matchResult ->
+                //    val url = matchResult.groupValues[2]
+                //    videoUrls.add(url)
+                //}
 
                 // Procesar cada URL según el servicio
-                videoUrls.forEach { url ->
+                fetchUrls(scriptContent).forEach { url ->
+                    Log.d("PelisPlusHD", "Server: $url")
                     when {
                         url.contains("embed69.org/f/") -> {
-                            val allLinksByLanguage = decryptLinks(url)
-                            for ((language, links) in allLinksByLanguage) {
-                                links.forEach { link ->
-                                    loadSourceNameExtractor(language,link,"",subtitleCallback,callback)
-                                }
+                            Embed69Extractor.load(url, data, subtitleCallback, callback)
+                        }
+                        url.contains("xupalace.org/video/") -> {
+                            XupaLaceExtractor.load(url, data, subtitleCallback, callback)
+                        }
+                        url.contains("uqlink.php?id=") -> {
+                            url.split("id=").getOrNull(1).let {
+                                loadSourceNameExtractor(
+                                    "LAT",
+                                    "https://uqload.bz/embed-$it.html",
+                                    data,
+                                    subtitleCallback,
+                                    callback
+                                )
                             }
                         }
-                        url.contains("xupalace.org/embed.php") -> {
-                            // Extractor no implementado
-                        }
-                        url.contains("xupalace.org/uqlink.php") -> {
-                            val uqLoadFix = url.split("id=")[1].let { "https://uqload.cx/embed-$it.html" }
-                            loadSourceNameExtractor("LAT", uqLoadFix, data, subtitleCallback, callback)
-                        }
-                        url.contains("waaw") -> {
-                            // Extractor no implementado
-                        }
                         else -> {
-                            loadExtractor(url, data, subtitleCallback, callback)
+                            loadSourceNameExtractor("LAT", url, data, subtitleCallback, callback)
                         }
                     }
                 }

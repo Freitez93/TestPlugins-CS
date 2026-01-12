@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.konan.properties.Properties
 
 // use an integer for version numbers
-version = 3
+version = 4
 
 android {
     buildFeatures {
@@ -24,7 +24,7 @@ android {
 cloudstream {
     // All of these properties are optional, you can safely remove them
 
-    description = "(Español Latino) Peliculas/Series/Doramas/Anime en PelisPlusHD.bz"
+    description = "PelisplusHD | Tu Portal de Películas y Series en Español y SubEsp"
     language = "mx"
     authors = listOf("Freitez93")
 
@@ -36,12 +36,7 @@ cloudstream {
      * 3: Beta only
      * */
     status = 1 // will be 3 if unspecified
-    tvTypes = listOf(
-        "Movie",
-        "TvSeries",
-        "AsianDrama",
-        "Anime",
-    )
+    tvTypes = listOf("Movie", "TvSeries")
 
     iconUrl = "https://www.google.com/s2/favicons?domain=pelisplushd.bz&sz=%size%"
 }
