@@ -101,6 +101,9 @@ object XupaLaceExtractor {
     ) {
         val document = app.get(url).documentLarge
         val mapUrl = mapOf(
+            ".OD_LAT > li" to "LAT",
+            ".OD_ES > li" to "ESP",
+            ".OD_EN > li" to "SUB",
             "li[data-lang='0']" to "LAT",
             "li[data-lang='1']" to "ESP",
             "li[data-lang='2']" to "SUB"
