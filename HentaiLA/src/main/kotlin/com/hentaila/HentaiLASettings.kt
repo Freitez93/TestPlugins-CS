@@ -329,7 +329,10 @@ object HentaiLASettings {
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 background = createButtonDrawable(Color.parseColor(COLOR_SAVE))
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
             }
             footer.addView(btnSave)
             mainLayout.addView(footer)
