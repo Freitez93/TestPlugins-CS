@@ -1,5 +1,6 @@
 package com.animeav1
 
+import android.annotation.SuppressLint
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.extractors.VidStack
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -12,54 +13,69 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-open class Zilla : ExtractorApi() {
-    override var name = "HLS"
+// --------------------------------
+//          PlayerZilla
+// --------------------------------
+class PlayerZilla : ExtractorApi() {
+    override var name = "PlayerZilla"
     override var mainUrl = "https://player.zilla-networks.com"
     override val requiresReferer = false
 
-    override suspend fun getUrl(url: String, referer: String?): List<ExtractorLink>? {
-            val mp4 = "$mainUrl/m3u8/${url.substringAfterLast("/")}"
-            return listOf(
-                newExtractorLink(
-                    this.name,
-                    this.name,
-                    url = mp4,
-                    type = ExtractorLinkType.M3U8
-                ) {
-                    this.referer = referer ?: ""
-                    this.quality = Qualities.P1080.value
-                }
-            )
+    @SuppressLint("SuspiciousIndentation")
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
+        val video = "$mainUrl/m3u8/${url.substringAfterLast("/")}"
+        callback.invoke(
+            newExtractorLink(
+                this.name,
+                this.name,
+                url = video,
+                type = ExtractorLinkType.M3U8
+            ) {
+                this.referer = referer ?: ""
+                this.quality = Qualities.P1080.value
+            }
+        )
     }
 }
 
-class Animeav1upn : VidStack() {
+// --------------------------------
+//            AnimeAV1
+// --------------------------------
+class AnimeAV1UPN : VidStack() {
+    override var name = "AnimeAV1"
     override var mainUrl = "https://animeav1.uns.bio"
 }
 
-suspend fun loadCustomExtractor(
-    name: String? = null,
+// --------------------------------
+//              Utils
+// --------------------------------
+suspend fun loadSourceNameExtractor(
+    source: String,
     url: String,
     referer: String? = null,
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit,
-    quality: Int? = null,
 ) {
     loadExtractor(url, referer, subtitleCallback) { link ->
         CoroutineScope(Dispatchers.IO).launch {
-            callback.invoke(newExtractorLink(
-                name ?: link.source,
-                name ?: link.name,
-                link.url,
-            ) {
-                this.quality = when {
-                    else -> quality ?: link.quality
+            callback.invoke(
+                newExtractorLink(
+                    "$source [${link.source}]",
+                    "$source [${link.source}]",
+                    link.url,
+                ) {
+                    this.quality = link.quality
+                    this.type = link.type
+                    this.referer = link.referer
+                    this.headers = link.headers
+                    this.extractorData = link.extractorData
                 }
-                this.type = link.type
-                this.referer = link.referer
-                this.headers = link.headers
-                this.extractorData = link.extractorData
-            })
+            )
         }
     }
 }
