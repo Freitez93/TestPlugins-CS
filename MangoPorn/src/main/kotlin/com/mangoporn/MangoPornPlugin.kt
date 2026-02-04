@@ -21,7 +21,7 @@ class MangoPornPlugin: Plugin() {
         registerExtractorAPI(Player4Me())
 
         this.openSettings = { ctx: Context ->
-            MangoSettings.showSettingsDialog(ctx as AppCompatActivity) {
+            MangoPornSettings.showSettingsDialog(ctx as AppCompatActivity) {
                 MainActivity.reloadHomeEvent.invoke(true)
             }
         }

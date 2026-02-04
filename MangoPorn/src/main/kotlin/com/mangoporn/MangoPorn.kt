@@ -5,6 +5,7 @@ import org.jsoup.nodes.Element
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
+import com.mangoporn.MangoPornSettings
 import kotlin.random.Random
 
 class MangoPorn : MainAPI() {
@@ -31,18 +32,17 @@ class MangoPorn : MainAPI() {
 
     override val mainPage get() = mainPageOf(
         *(try {
-            MangoSettings.getOrderedAndEnabledCategories().toTypedArray()
+            MangoPornSettings.getOrderedAndEnabledCategories().toTypedArray()
         } catch (e: Exception) {
             Log.e("MangoPorn", "No se pudieron cargar las categorías, usando la lista de respaldo: ${e.message}")
             arrayOf(
-                "xxxclips" to "XXXClips",
-                "trending" to "Trending",
-                "genres/porn-movies" to "Recently added",
-                "genres/porn-movies/random" to "Random Contents"
+                "/xxxclips" to "XXXClips",
+                "/trending" to "Trending",
+                "/genres/porn-movies" to "Recently added",
+                "/genres/porn-movies/random" to "Random Contents"
             )
         })
     )
-
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val url = if (request.data.endsWith("/random")) {
@@ -80,7 +80,7 @@ class MangoPorn : MainAPI() {
         val document = app.get(url).document
 
         val title = document.selectFirst("div.data > h1")?.text().toString()
-        val poster = document.selectFirst("div.poster > img")?.attr("data-wpfc-original-src")?.trim().toString()
+        val poster = document.selectFirst("div.poster > img").getImg()
         val year = document.selectFirst("span.textco a[rel=tag]")?.text()?.trim()?.toIntOrNull()
         val duration = document.selectFirst("span.duration")?.text()?.let {
             val hours = Regex("""(\d+)\s*hrs""").find(it)?.groupValues?.get(1)?.toIntOrNull() ?: 0
@@ -141,7 +141,7 @@ class MangoPorn : MainAPI() {
             return null
         }
         val href = fixUrl(this.select("a[href]").attr("href"))
-        val posterUrl = getImgOrFallBack(this.selectFirst("div.poster > img"))
+        val posterUrl = this.selectFirst("div.poster > img").getImg()
 
         return newMovieSearchResponse(title, href, TvType.NSFW) {
             this.posterUrl = posterUrl
@@ -155,25 +155,24 @@ class MangoPorn : MainAPI() {
             return null
         }
         val href = fixUrl(this.select(".title > a").attr("href"))
-        val posterUrl = getImgOrFallBack(this.selectFirst("img"))
+        val posterUrl = this.selectFirst("img").getImg()
         return newMovieSearchResponse(title, href, TvType.NSFW) {
             this.posterUrl = posterUrl
         }
     }
 
     // Función para extraer la img de un Element.
-    private fun getImgOrFallBack(
-        element: Element?,
+    private fun Element?.getImg(
         fallback: String = "https://i.postimg.cc/tT28ZcZv/Poster-Not-Found.jpg"
     ): String {
-        if (element == null) return fallback
+        if (this == null) return fallback
         return sequenceOf(
             "data-wpfc-original-src",
             "data-lazy-src",
             "data-src",
             "src"
         ).mapNotNull {
-            element.attr(it).takeIf(String::isNotBlank)
+            this.attr(it).takeIf(String::isNotBlank)
         }.firstOrNull {
             it.lowercase().endsWith(".jpg") || it.lowercase().endsWith(".png")
         } ?: fallback
