@@ -219,7 +219,8 @@ class HentaiLAProvider : MainAPI() {
                 listOf("embeds", "downloads").forEach { key ->
                     extractUrls(dataObj, key)?.forEach { (category, items) ->
                         val currentList = allEmbeds[category] ?: emptyList()
-                        allEmbeds[category] = currentList + items
+                        // Filtrar URLs duplicadas usando distinctBy
+                        allEmbeds[category] = (currentList + items).distinctBy { it.url }
                     }
                 }
             }
