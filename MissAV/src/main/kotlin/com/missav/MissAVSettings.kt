@@ -557,9 +557,19 @@ object MissAVSettings {
             mainLayout.findViewWithTag<Button>("SAVE_BTN")?.apply {
                 nextFocusUpId = ID_RECYCLER_VIEW
                 setOnClickListener {
-                    onSave()
-                    dialog.dismiss()
-                    restartApp()
+                    AlertDialog.Builder(context)
+                        .setTitle("Reiniciar Aplicación")
+                        .setMessage("¿Deseas reiniciar la aplicación para aplicar los cambios?")
+                        .setPositiveButton("Sí") { _, _ ->
+                            onSave()
+                            dialog.dismiss()
+                            restartApp()
+                        }
+                        .setNegativeButton("No") { _, _ ->
+                            onSave()
+                            dialog.dismiss()
+                        }
+                        .show()
                 }
             }
         }
