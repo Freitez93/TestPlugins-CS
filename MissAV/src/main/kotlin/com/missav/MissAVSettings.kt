@@ -971,13 +971,13 @@ object MissAVSettings {
 
                 // Listeners
                 val toggleAction = {
-                    val pos = holder.adapterPosition
+                    val pos = holder.bindingAdapterPosition
                     if (pos != RecyclerView.NO_POSITION) handleToggle(items[pos], !isEnabled, pos)
                 }
 
                 holder.container.setOnClickListener { toggleAction() }
                 holder.checkBox.setOnClickListener {
-                    val pos = holder.adapterPosition
+                    val pos = holder.bindingAdapterPosition
                     if (pos != RecyclerView.NO_POSITION) {
                         handleToggle(items[pos], holder.checkBox.isChecked, pos)
                     }
@@ -985,7 +985,7 @@ object MissAVSettings {
 
                 holder.checkBox.setOnKeyListener { _, keyCode, event ->
                     if (event.action == KeyEvent.ACTION_UP && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_DPAD_CENTER)) {
-                        val pos = holder.adapterPosition
+                        val pos = holder.bindingAdapterPosition
                         if (pos != RecyclerView.NO_POSITION) {
                             val newState = !isCategoryEnabled(items[pos])
                             holder.checkBox.isChecked = newState
@@ -1000,12 +1000,12 @@ object MissAVSettings {
                 val canMoveDown = isEnabled && position < (selectedCount - 1)
 
                 setupMoveButton(holder.upButton, isEnabled, canMoveUp, UP_BUTTON_ID) {
-                    val fromPos = holder.adapterPosition
+                    val fromPos = holder.bindingAdapterPosition
                     if (fromPos != RecyclerView.NO_POSITION) moveItem(fromPos, fromPos - 1, UP_BUTTON_ID)
                 }
 
                 setupMoveButton(holder.downButton, isEnabled, canMoveDown, DOWN_BUTTON_ID) {
-                    val fromPos = holder.adapterPosition
+                    val fromPos = holder.bindingAdapterPosition
                     if (fromPos != RecyclerView.NO_POSITION) moveItem(fromPos, fromPos + 1, DOWN_BUTTON_ID)
                 }
                 holder.downButton.nextFocusRightId = DELETE_BUTTON_ID // Explicit link
@@ -1014,7 +1014,7 @@ object MissAVSettings {
                 holder.deleteButton.apply {
                     visibility = View.VISIBLE
                     setOnClickListener {
-                        val pos = holder.adapterPosition
+                        val pos = holder.bindingAdapterPosition
                         if (pos != RecyclerView.NO_POSITION) showEditCategoryDialog(items[pos])
                     }
                     setOnKeyListener { _, keyCode, event ->

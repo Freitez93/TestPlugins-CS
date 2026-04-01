@@ -19,7 +19,7 @@ import android.util.Base64
 import android.util.Log
 
 class UqLoadCX : Uqload() {
-    override val mainUrl = "https://uqload.bz"
+    override var mainUrl = "https://uqload.bz"
 }
 
 class waaw : StreamSB() {
