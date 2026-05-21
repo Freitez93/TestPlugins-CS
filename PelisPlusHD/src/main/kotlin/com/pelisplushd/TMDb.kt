@@ -87,9 +87,9 @@ open class TMDb(lang: String? = null) {
         return try {
             val findResponse = app.get(tmdbUrl, params = params).parsedSafe<FindResponse>()
             if (type == TvType.Movie) {
-                findResponse?.movieResults?.getOrNull(0)?.id?.toString()
+                findResponse?.movieResults?.getOrNull(0)?.id
             } else {
-                findResponse?.tvResults?.getOrNull(0)?.id?.toString()
+                findResponse?.tvResults?.getOrNull(0)?.id
             }
         } catch (e: Exception) {
             null
