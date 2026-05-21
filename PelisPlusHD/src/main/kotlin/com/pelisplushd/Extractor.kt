@@ -38,8 +38,8 @@ object Embed69Extractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val embedResp    = app.get(url)
-        val pageHtml     = embedResp.text
+        val embedResp = app.get(url)
+        val pageHtml = embedResp.text
         val dataLinkJson = embedResp.document.select("script")
             .firstOrNull { it.html().contains("dataLink =") }
             ?.html()
@@ -153,35 +153,6 @@ object Embed69Extractor {
         @JsonProperty("file_id") val fileId: String? = null,
         @JsonProperty("video_language") val videoLanguage: String? = null,
         @JsonProperty("sortedEmbeds") val sortedEmbeds: List<Server> = emptyList(),
-    ) {
-        data class Server(
-            @JsonProperty("servername") val servername: String? = null,
-            @JsonProperty("link") val link: String? = null,
-        )
-    }
-
-    data class LinksRequest(
-        val links: List<String>,
-    )
-
-    data class Loadlinks(
-        val success: Boolean,
-        val links: List<Link>,
-    ) {
-        data class Link(
-            val index: Long,
-            val link: String,
-        )
-    }
-}
-
-    //-------------------------------------//
-    //              data class             //
-    //-------------------------------------//
-    data class ServersByLang(
-        @JsonProperty("file_id") val fileId: String? = null,
-        @JsonProperty("video_language") val videoLanguage: String? = null,
-        @JsonProperty("sortedEmbeds") val sortedEmbeds: List<Server> = emptyList<Server>(),
     ) {
         data class Server(
             @JsonProperty("servername") val servername: String? = null,
