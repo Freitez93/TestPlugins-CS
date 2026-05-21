@@ -17,6 +17,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import android.util.Base64
 import android.util.Log
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
+import java.security.MessageDigest
 
 class UqLoadCX : Uqload() {
     override var mainUrl = "https://uqload.bz"
@@ -34,33 +38,142 @@ object Embed69Extractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        app.get(url).document.select("script")
-            .firstOrNull { it.html().contains("dataLink = [") }?.html()
-            ?.substringAfter("dataLink = ")
-            ?.substringBefore(";")?.let {
-                AppUtils.tryParseJson<List<ServersByLang>>(it)?.amap { lang ->
-                    val jsonData = LinksRequest(lang.sortedEmbeds.amap { it.link!! })
-                    val body = jsonData.toJson().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+        val embedResp    = app.get(url)
+        val pageHtml     = embedResp.text
+        val dataLinkJson = embedResp.document.select("script")
+            .firstOrNull { it.html().contains("dataLink =") }
+            ?.html()
+            ?.substringAfter("dataLink =")
+            ?.substringBefore(";")
+            ?.trim()
+            ?: run {
+                Log.e("Embed69Extractor", "No se encontró dataLink en la página: $url")
+                return
+            }
 
-                    val decrypted = app.post(
-                        "https://embed69.org/api/decrypt",
-                        requestBody = body
-                    ).parsedSafe<Loadlinks>()
+        val challenge = Regex("""POW_CHALLENGE\s*=\s*['\"]([^'\"]+)['\"]""")
+            .find(pageHtml)?.groupValues?.get(1)
+        val salt = Regex("""POW_SALT\s*=\s*['\"]([^'\"]+)['\"]""")
+            .find(pageHtml)?.groupValues?.get(1)
 
-                    if (decrypted?.success == true) {
-                        decrypted.links.amap {
-                            loadSourceNameExtractor(
-                                lang.videoLanguage!!,
-                                fixHostsLinks(it.link),
-                                referer,
-                                subtitleCallback,
-                                callback
-                            )
-                        }
-                    }
+        if (challenge == null || salt == null) {
+            Log.e("Embed69Extractor", "No se pudo extraer POW_CHALLENGE o POW_SALT de: $url")
+            return
+        }
+
+        val serversByLang = AppUtils.tryParseJson<List<ServersByLang>>(dataLinkJson)
+        if (serversByLang.isNullOrEmpty()) {
+            Log.e("Embed69Extractor", "JSON de dataLink no se pudo parsear o está vacío")
+            return
+        }
+
+        val aesKey = solveEmbed69PoW(challenge, salt)
+        if (aesKey == null) {
+            Log.e("Embed69Extractor", "PoW failed para: $url")
+            return
+        }
+
+        serversByLang.amap { lang ->
+            val encryptedLinks = lang.sortedEmbeds.mapNotNull { it.link }
+            if (encryptedLinks.isEmpty()) return@amap
+            encryptedLinks.forEach { encrypted ->
+                val decryptedUrl = decryptAESLocal(encrypted, aesKey)
+                if (!decryptedUrl.isNullOrBlank()) {
+                    loadSourceNameExtractor(
+                        lang.videoLanguage ?: "Unknown",
+                        fixHostsLinks(decryptedUrl),
+                        referer,
+                        subtitleCallback,
+                        callback
+                    )
+                } else {
+                    Log.e("Embed69Extractor", "Link descifrado inválido para idioma ${lang.videoLanguage}")
                 }
             }
+        }
     }
+
+    private suspend fun solveEmbed69PoW(challenge: String, salt: String): ByteArray? {
+        val md = MessageDigest.getInstance("SHA-256")
+        var nonce = 0L
+        val maxAttempts = 500000L
+        while (nonce < maxAttempts) {
+            val input = "$challenge$nonce".toByteArray(Charsets.UTF_8)
+            val hash = md.digest(input).joinToString("") { "%02x".format(it) }
+            if (hash.startsWith("000")) {
+                Log.d("Embed69Extractor", "PoW encontrado nonce=$nonce hash=${hash.take(8)}")
+                return MessageDigest.getInstance("SHA-256")
+                    .digest("$challenge$nonce$salt".toByteArray(Charsets.UTF_8))
+            }
+            nonce++
+            if (nonce % 10000L == 0L) delay(1)
+        }
+        return null
+    }
+
+    private fun decryptAESLocal(encryptedBase64: String, aesKey: ByteArray): String? {
+        return try {
+            val raw = Base64.decode(encryptedBase64, Base64.NO_WRAP)
+            if (raw.size < 17) {
+                Log.e("Embed69Extractor", "AES decrypt: raw data too short (${raw.size})")
+                return null
+            }
+            val iv = raw.copyOfRange(0, 16)
+            val ciphertext = raw.copyOfRange(16, raw.size)
+            if (ciphertext.isEmpty()) {
+                Log.e("Embed69Extractor", "AES decrypt: ciphertext vacío")
+                return null
+            }
+
+            val keySpec = SecretKeySpec(aesKey.copyOfRange(0, 32), "AES")
+            return try {
+                val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, IvParameterSpec(iv))
+                String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+            } catch (e: Exception) {
+                Log.w("Embed69Extractor", "PKCS5Padding failed: ${e.message}, intentando NoPadding")
+                val cipher = Cipher.getInstance("AES/CBC/NoPadding")
+                cipher.init(Cipher.DECRYPT_MODE, keySpec, IvParameterSpec(iv))
+                val decrypted = cipher.doFinal(ciphertext)
+                val padByte = decrypted.last().toInt() and 0xFF
+                val padLen = if (padByte in 1..16 && decrypted.size >= padByte) padByte else 0
+                val clean = if (padLen > 0) decrypted.copyOfRange(0, decrypted.size - padLen) else decrypted
+                String(clean, Charsets.UTF_8)
+            }
+        } catch (e: Exception) {
+            Log.e("Embed69Extractor", "AES decrypt error: ${e.message}")
+            null
+        }
+    }
+
+    //-------------------------------------//
+    //              data class             //
+    //-------------------------------------//
+    data class ServersByLang(
+        @JsonProperty("file_id") val fileId: String? = null,
+        @JsonProperty("video_language") val videoLanguage: String? = null,
+        @JsonProperty("sortedEmbeds") val sortedEmbeds: List<Server> = emptyList(),
+    ) {
+        data class Server(
+            @JsonProperty("servername") val servername: String? = null,
+            @JsonProperty("link") val link: String? = null,
+        )
+    }
+
+    data class LinksRequest(
+        val links: List<String>,
+    )
+
+    data class Loadlinks(
+        val success: Boolean,
+        val links: List<Link>,
+    ) {
+        data class Link(
+            val index: Long,
+            val link: String,
+        )
+    }
+}
 
     //-------------------------------------//
     //              data class             //
