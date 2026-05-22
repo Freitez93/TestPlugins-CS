@@ -91,14 +91,14 @@ class SoloLatinoProvider : MainAPI() {
         val mediaTitle    = document.selectFirst("div > img[style]")!!.attr("alt")
         val mediaCover    = document.selectFirst("div > img[style]")!!.attr("src")
         val mediaBdrop    = document.selectFirst("meta[property='og:image']")!!.attr("content")
-        val mediaTtOrg    = document.selectFirst("div.detail-field > dd")?.text()
+        val mediaTtOrg    = document.selectFirst("div.detail-field:contains(Título original) > dd")?.text()
         val mediaLogo     = document.selectFirst("div > img[class*='mb-3']")?.attr("src")
-        val mediaYear     = document.selectFirst("div[style='color:#7070a0'] > span:nth-child(1)")?.text()?.toIntOrNull()
+        val mediaYear     = document.selectFirst("title")?.text()?.subStringBetween("(", ")")?.toIntOrNull()
         val mediaTime     = document.selectFirst("div[style] > span:nth-child(2)")!!.text()
         val mediaPlot     = document.selectFirst("p[class*='leading-relaxed']")?.text()
         val mediaImdb     = document.selectFirst("dd > a[href*='/tt']")?.attr("href")
         val mediaYtID     = document.selectFirst("button[data-trailer]")?.attr("data-trailer")
-        val mediaScore    = document.selectFirst("span[class='rating-badge--tmd']")?.text()?.replace("◆", "")
+        val mediaScore    = document.selectFirst("span.rating-badge--tmdb, span.rating-badge__val")?.text()?.replace("◆", "")
         val mediaStatus   = document.selectFirst("span[style*='color:#888']")?.text()
         val mediaGenres   = document.select("a[href*='/genero/'][onmouseover]").map { it.text() }
         val mediaActors   = document.select("div[id*=scroll-cast-] > .cast-card").mapNotNull { castData ->
@@ -308,6 +308,14 @@ class SoloLatinoProvider : MainAPI() {
             Log.e("SoloLatino", "Error en agregar parametros a una URL: $e")
             this
         }
+    }
+    // Función para extraer una subcadena entre dos delimitadores
+    private fun String.subStringBetween(start: String, end: String): String? {
+        val startIndex = this.indexOf(start)
+        if (startIndex == -1) return null
+        val endIndex = this.indexOf(end, startIndex + start.length)
+        if (endIndex == -1) return null
+        return this.substring(startIndex + start.length, endIndex)
     }
     // Función para determinar el tipo de contenido.
     private fun getTvType(isType: String?): TvType {
