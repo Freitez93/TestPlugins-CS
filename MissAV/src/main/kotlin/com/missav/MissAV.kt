@@ -28,7 +28,7 @@ class MissAV : MainAPI() {
         *(try {
             MissAVSettings.getOrderedAndEnabledCategories().toTypedArray()
         } catch (e: Exception) {
-            Log.e("MissAV", "No se pudieron cargar las categorías, usando la lista de respaldo: ${e.message}")
+            Log.e(name, "No se pudieron cargar las categorías, usando la lista de respaldo: ${e.message}")
             arrayOf(
                 "/new?sort=published_at" to "Recent Update",
                 "/release?sort=released_at" to "New Releases",
@@ -71,17 +71,16 @@ class MissAV : MainAPI() {
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val (href, time) = url.split("|")
-        val baseCode     = href.substringAfterLast("/")
-        val document     = safeAppGet(href).document
-        val title        = document.select("h1[class*='text-base']").text().trim()
-        val plot         = document.selectFirst("meta[property='og:description']")?.attr("content")?.trim()
-        val year         = document.selectFirst("time[datetime]")?.text()?.substringBefore("-")?.toIntOrNull()
-        val tags         = document.select("span:containsOwn(Genre) ~ a").map { it.text().trim() }
-        val duration     = time.toIntOrNull()
-        val actors       = document.select("span:containsOwn(Actress) ~ a").map { Actor(it.text()) }
-        val m3u8         = """source\s*=\s*['"](.*?)['"]""".toRegex().find(getAndUnpack(document.html()))?.groupValues?.get(1)?.trim()
-        val fixTitle     = getTitle(title, baseCode)
+        val document = safeAppGet(url).document
+        val baseCode = url.substringAfterLast("/")
+        val title    = document.select("h1[class*='text-base']").text().trim()
+        val plot     = document.selectFirst("meta[property='og:description']")?.attr("content")?.trim()
+        val year     = document.selectFirst("time[datetime]")?.text()?.substringBefore("-")?.toIntOrNull()
+        val tags     = document.select("span:containsOwn(Genre) ~ a").map { it.text().trim() }
+        val duration = document.selectFirst("meta[property='og:video:duration']")?.attr("content")?.toIntOrNull()?.let { it / 60 }
+        val actors   = document.select("span:containsOwn(Actress) ~ a").map { Actor(it.text()) }
+        val m3u8     = """source\s*=\s*['"](.*?)['"]""".toRegex().find(getAndUnpack(document.html()))?.groupValues?.get(1)?.trim()
+        val fixTitle = getTitle(title, baseCode)
         return newMovieLoadResponse(fixTitle, url, TvType.NSFW, m3u8) {
             this.posterUrl = "https://fourhoi.com/$baseCode/cover-n.jpg"
             this.plot = plot
@@ -118,10 +117,11 @@ class MissAV : MainAPI() {
     // Función para convertir un elemento HTML a SearchResponse
     private fun Element.toMainPageResult(): SearchResponse? {
         var tags = "" // Etiqueta vacia
-        val time = fixTime(this.selectFirst("span.absolute")?.text()?.trim() ?: "")
-        val code = this.selectFirst("a[alt*='-']")?.attr("alt") ?: return null
+        val href = this.selectFirst("a")?.attr("href") ?: return null
+        val code = href.substringAfterLast("/")
         val title = getTitle(this.selectFirst("img")?.attr("alt"), code)
         val posterUrl = this.selectFirst("img").getImg()
+        // Agregar etiquetas basadas en el código
         listOf(
             "english" to "[SUB-ENGLISH]",
             "chinese" to "[SUB-CHINESE]",
@@ -130,7 +130,7 @@ class MissAV : MainAPI() {
             if (code.contains(text)) tags += tag
         }
         val fixTitle = if (tags.isNotBlank()) "$tags $title" else "$title"
-        return newAnimeSearchResponse(fixTitle, "$code|$time", TvType.NSFW) {
+        return newAnimeSearchResponse(fixTitle, href, TvType.NSFW) {
             this.posterUrl = posterUrl.replace("cover-t", "cover")
             if (code.contains("-subtitle")) addDubStatus(DubStatus.Subbed)
         }
@@ -161,7 +161,7 @@ class MissAV : MainAPI() {
                 key, value
             ).build().toString()
         } catch (e: Exception) {
-            Log.e("MissAV", "Error en agregar parametros a una URL: $e")
+            Log.e(name, "Error en agregar parametros a una URL: $e")
             this
         }
     }
@@ -195,7 +195,11 @@ class MissAV : MainAPI() {
         val nHeaders = if (headers != null) {
             headers
         } else {
-            mapOf("Referer" to mainUrl)
+            mapOf(
+                "Referer" to mainUrl,
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+                "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            )
         }
 
         var response = app.get(url, timeout = timeoutMs, headers = nHeaders)
