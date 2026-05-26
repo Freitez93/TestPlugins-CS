@@ -15,6 +15,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.13.2")
         // Cloudstream gradle plugin which makes everything work and builds plugins
         classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
+        classpath("org.jetbrains.kotlin:kotlin-serialization:2.3.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
     }
 }
@@ -34,6 +35,7 @@ fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByN
 subprojects {
     apply(plugin = "com.android.library")
     apply(plugin = "kotlin-android")
+    apply(plugin = "kotlinx-serialization")
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
@@ -78,7 +80,7 @@ subprojects {
         // These dependencies can include any of those which are added by the app,
         // but you don't need to include any of them if you don't need them.
         // https://github.com/recloudstream/cloudstream/blob/master/app/build.gradle.kts
-        implementation(kotlin("stdlib-jdk8")) // Adds Standard Kotlin Features
+        implementation(kotlin("stdlib")) // Adds Standard Kotlin Features
         implementation("com.github.Blatzar:NiceHttp:0.4.13") // HTTP Lib
         implementation("org.jsoup:jsoup:1.21.2") // HTML Parser
         // IMPORTANT: Do not bump Jackson above 2.13.1, as newer versions will
