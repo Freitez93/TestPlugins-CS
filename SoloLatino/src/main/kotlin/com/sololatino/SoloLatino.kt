@@ -30,7 +30,7 @@ class SoloLatinoProvider : MainAPI() {
         *(try {
             SoloLatinoSettings.getOrderedAndEnabledCategories().toTypedArray()
         } catch (e: Exception) {
-            Log.e("SoloLatino", "No se pudieron cargar las categorías, usando la lista de respaldo: ${e.message}")
+            Log.e(name, "No se pudieron cargar las categorías, usando la lista de respaldo: ${e.message}")
             arrayOf(
                 "/peliculas" to "Home: Películas",
                 "/series" to "Home: Series",
@@ -94,13 +94,14 @@ class SoloLatinoProvider : MainAPI() {
         val mediaTtOrg    = document.selectFirst("div.detail-field:contains(Título original) > dd")?.text()
         val mediaLogo     = document.selectFirst("div > img[class*='mb-3']")?.attr("src")
         val mediaYear     = document.selectFirst("title")?.text()?.subStringBetween("(", ")")?.toIntOrNull()
-        val mediaTime     = document.selectFirst("div[style] > span:nth-child(2)")!!.text()
+        val mediaTime     = document.selectFirst("div.gap-4 > span:nth-child(2)")?.text() ?: ""
         val mediaPlot     = document.selectFirst("p[class*='leading-relaxed']")?.text()
-        val mediaImdb     = document.selectFirst("dd > a[href*='/tt']")?.attr("href")
+        val mediaImdb     = document.selectFirst("a[href*='/tt']")?.attr("href")
         val mediaYtID     = document.selectFirst("button[data-trailer]")?.attr("data-trailer")
         val mediaScore    = document.selectFirst("span.rating-badge--tmdb, span.rating-badge__val")?.text()?.replace("◆", "")
-        val mediaStatus   = document.selectFirst("span[style*='color:#888']")?.text()
-        val mediaGenres   = document.select("a[href*='/genero/'][onmouseover]").map { it.text() }
+        val mediaRating   = document.selectFirst("span.badge[style]")?.text()
+        val mediaStatus   = document.selectFirst("div.flex > span.rounded")?.text()
+        val mediaGenres   = document.select("div.flex > a[href*='/genero/']").map { it.text() }
         val mediaActors   = document.select("div[id*=scroll-cast-] > .cast-card").mapNotNull { castData ->
             val actorName = castData.selectFirst("img")?.attr("alt") ?: return@mapNotNull null
             val actorImgn = castData.selectFirst("img")?.attr("src") ?: "https://i.postimg.cc/SQwzL4Tm/Not-Person.jpg"
@@ -145,6 +146,7 @@ class SoloLatinoProvider : MainAPI() {
                 this.logoUrl                = mediaLogo
                 this.year                   = mediaYear
                 this.plot                   = mediaPlot
+                this.contentRating          = mediaRating
                 this.score                  = Score.from(mediaScore, 10)
                 //this.duration               = getDurationFromString(mediaTime)
                 this.tags                   = mediaGenres
@@ -162,6 +164,7 @@ class SoloLatinoProvider : MainAPI() {
                 this.logoUrl                = mediaLogo
                 this.year                   = mediaYear
                 this.plot                   = mediaPlot
+                this.contentRating          = mediaRating
                 this.score                  = Score.from(mediaScore, 10)
                 //this.duration               = getDurationFromString(mediaTime)
                 this.tags                   = mediaGenres
@@ -179,6 +182,7 @@ class SoloLatinoProvider : MainAPI() {
                 this.logoUrl                = mediaLogo
                 this.year                   = mediaYear
                 this.plot                   = mediaPlot
+                this.contentRating          = mediaRating
                 this.score                  = Score.from(mediaScore, 10)
                 this.duration               = getDurationFromString(mediaTime)
                 this.tags                   = mediaGenres
@@ -200,14 +204,37 @@ class SoloLatinoProvider : MainAPI() {
         return withContext(Dispatchers.IO) {
             try {
                 val document = app.get(data).documentLarge
-                val listOfLinks = document.select("button[data-server-url]").mapNotNull { 
-                    it.attr("data-server-url") 
-                }.toMutableList()
-                Log.d("SoloLatino", "Enlaces encontrados: $listOfLinks")
+                val listOfLinks = document.select("button[data-server-url], button[data-player-id]").mapNotNull {
+                    val playerId = it.attr("data-player-id")
+                    val playerMd = it.attr("data-player-model").ifBlank { "episode" }
+                    if (playerId.isNotBlank()) {
+                        // Construir la URL de la API usando el playerId y headers
+                        val csrfToken = document.selectFirst("meta[name=csrf-token]")?.attr("content") ?: ""
+                        val apiUrl = "$mainUrl/api/player-url/$playerMd/$playerId"
+                        val header = mapOf(
+                            "Accept" to "application/json",
+                            "X-CSRF-TOKEN" to csrfToken,
+                            "X-Requested-With" to "XMLHttpRequest",
+                            "Referer" to data,
+                        )
+                        // Realizar la solicitud a la API para obtener la URL del servidor
+                        try {
+                            val apiResponse = app.get(apiUrl, headers = header).text
+                            val jsonObject = JSONObject(apiResponse)
+                            jsonObject.optString("url").takeIf(String::isNotBlank)
+                        } catch (e: Exception) {
+                            Log.e(name, "Error al obtener la URL del servidor desde la API: ${e.message}")
+                            null
+                        }
+                    } else {
+                        it.attr("data-server-url").takeIf(String::isNotBlank)
+                    }
+                }
 
+                Log.d(name, "Enlaces encontrados: $listOfLinks")
                 // Procesar cada URL según el servicio
                 listOfLinks.forEach { url ->
-                    Log.d("SoloLatino", "Server: $url")
+                    Log.d(name, "Server: $url")
                     when {
                         url.contains("embed69.org") -> {
                             Embed69Extractor.load(url, data, subtitleCallback, callback)
@@ -248,9 +275,9 @@ class SoloLatinoProvider : MainAPI() {
         val href        = this.selectFirst("a")?.attr("href") ?: return null
         val score       = this.selectFirst("span[class='card__rating']")?.text()?.replace("★", "")
         val year        = this.selectFirst("span[class='card__year']")?.text()?.toIntOrNull()
-        val isType      = this.selectFirst("span[class*='badge']")?.text()
+        val isType      = this.selectFirst("span[class*='badge']")?.text() ?: ""
 
-        return createSearchResponse(title, href, posterUrl, year, isType.toString(), score)
+        return createSearchResponse(title, href, posterUrl, year, isType, score)
     }
     // Función para crear una respuesta de búsqueda basada en el tipo de contenido
     private fun createSearchResponse(
@@ -305,7 +332,7 @@ class SoloLatinoProvider : MainAPI() {
             val builder = uri.buildUpon()
             builder.appendQueryParameter(key, value).build().toString()
         } catch (e: Exception) {
-            Log.e("SoloLatino", "Error en agregar parametros a una URL: $e")
+            Log.e(name, "Error en agregar parametros a una URL: $e")
             this
         }
     }
