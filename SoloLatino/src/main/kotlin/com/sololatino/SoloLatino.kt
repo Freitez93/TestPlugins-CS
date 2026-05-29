@@ -203,23 +203,38 @@ class SoloLatinoProvider : MainAPI() {
     ): Boolean {
         return withContext(Dispatchers.IO) {
             try {
-                val document = app.get(data).documentLarge
-                val listOfLinks = document.select("button[data-server-url], button[data-player-id]").mapNotNull {
-                    val playerId = it.attr("data-player-id")
-                    val playerMd = it.attr("data-player-model").ifBlank { "episode" }
-                    if (playerId.isNotBlank()) {
-                        // Construir la URL de la API usando el playerId y headers
-                        val csrfToken = document.selectFirst("meta[name=csrf-token]")?.attr("content") ?: ""
-                        val apiUrl = "$mainUrl/api/player-url/$playerMd/$playerId"
-                        val header = mapOf(
+                // Primero, obtenemos las cookies necesarias para autenticarnos con Sanctum
+                var webCookies = mapOf<String, String>()
+                app.get("$mainUrl/sanctum/csrf-cookie", timeout = 15000L).also {
+                    Log.d(name, "loadLinks - Sanctum GET HTTP ${it.code}, cookies=${it.cookies}")
+                    if (it.cookies.isNotEmpty()) webCookies = webCookies + it.cookies
+                }
+                // Luego, hacemos la solicitud a la página del contenido para obtener los enlaces de los servidores
+                val response = app.get(data, cookies = webCookies, timeout = 30000L)
+                val document = response.documentLarge
+                if (response.cookies.isNotEmpty()) webCookies = webCookies + response.cookies
+                val listOfLinks = document.select("button[data-player-token], button[data-server-btn]").mapNotNull {
+                    val playerToken = it.attr("data-player-token")
+                    // Si el botón tiene un token, hacemos una solicitud a la API.
+                    if (playerToken.isNotBlank()) {
+                        // Construir la URL de la API usando el playerToken y headers
+                        val xsrfToken = java.net.URLDecoder.decode(webCookies["XSRF-TOKEN"] ?: "", "UTF-8")
+                        val apiHeader = mapOf(
                             "Accept" to "application/json",
-                            "X-CSRF-TOKEN" to csrfToken,
+                            "Content-Type" to "application/json",
+                            "X-XSRF-TOKEN" to xsrfToken,
                             "X-Requested-With" to "XMLHttpRequest",
                             "Referer" to data,
                         )
                         // Realizar la solicitud a la API para obtener la URL del servidor
                         try {
-                            val apiResponse = app.get(apiUrl, headers = header).text
+                            val apiResponse = app.post(
+                                "$mainUrl/api/player-url",
+                                json = mapOf("t" to playerToken),
+                                headers = apiHeader,
+                                cookies = webCookies,
+                                timeout = 15000L
+                            ).text
                             val jsonObject = JSONObject(apiResponse)
                             jsonObject.optString("url").takeIf(String::isNotBlank)
                         } catch (e: Exception) {
@@ -227,13 +242,13 @@ class SoloLatinoProvider : MainAPI() {
                             null
                         }
                     } else {
-                        it.attr("data-server-url").takeIf(String::isNotBlank)
+                        null
                     }
                 }
 
                 Log.d(name, "Enlaces encontrados: $listOfLinks")
                 // Procesar cada URL según el servicio
-                listOfLinks.forEach { url ->
+                listOfLinks.amap { url ->
                     Log.d(name, "Server: $url")
                     when {
                         url.contains("embed69.org") -> {

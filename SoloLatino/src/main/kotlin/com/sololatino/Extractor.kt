@@ -77,7 +77,7 @@ object Embed69Extractor {
                         callback
                     )
                 } else {
-                    Log.e("Embed69Extractor", "Link descifrado inválido para idioma ${lang.videoLanguage}")
+                    Log.e("Embed69Extractor", "Link descifrado inválido: ${decryptedUrl}")
                 }
             }
         }
