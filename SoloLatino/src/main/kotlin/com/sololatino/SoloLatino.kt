@@ -1,18 +1,14 @@
 package com.sololatino
 
 import android.util.Log
-import android.net.Uri
+import androidx.core.net.toUri
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addImdbUrl
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.nodes.Element
-import kotlin.random.Random
 
 class SoloLatinoProvider : MainAPI() {
     // Variables en Settings.
@@ -114,9 +110,9 @@ class SoloLatinoProvider : MainAPI() {
         val mediaEpisodes = ArrayList<Episode>()
         val isType = getTvType(document.selectFirst("span[class*='badge']")?.text())
         if (isType != TvType.Movie) {
-            document.select("div[data-season-panel]").map { seasonData ->
+            document.select("div[data-season-panel]").forEach { seasonData ->
                 val seasonNumber = seasonData.attr("data-season-panel").toIntOrNull()
-                seasonData.select("div > a").map { episodeData -> 
+                seasonData.select("div > a").forEach { episodeData ->
                     val episodeNumber  = episodeData.selectFirst("div[class*='min-w-0'] > p:nth-child(1)")?.text()?.toIntOrNull()
                     val episodeTitle   = episodeData.selectFirst("div[class*='min-w-0'] > p:nth-child(2)")?.text()
                     val episodePlot    = episodeData.selectFirst("div[class*='min-w-0'] > p:nth-child(3)")?.text()
@@ -201,83 +197,81 @@ class SoloLatinoProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                // Primero, obtenemos las cookies necesarias para autenticarnos con Sanctum
-                var webCookies = mapOf<String, String>()
-                app.get("$mainUrl/sanctum/csrf-cookie", timeout = 15000L).also {
-                    Log.d(name, "loadLinks - Sanctum GET HTTP ${it.code}, cookies=${it.cookies}")
-                    if (it.cookies.isNotEmpty()) webCookies = webCookies + it.cookies
-                }
-                // Luego, hacemos la solicitud a la página del contenido para obtener los enlaces de los servidores
-                val response = app.get(data, cookies = webCookies, timeout = 30000L)
-                val document = response.documentLarge
-                if (response.cookies.isNotEmpty()) webCookies = webCookies + response.cookies
-                val listOfLinks = document.select("button[data-player-token], button[data-server-btn]").mapNotNull {
-                    val playerToken = it.attr("data-player-token")
-                    // Si el botón tiene un token, hacemos una solicitud a la API.
-                    if (playerToken.isNotBlank()) {
-                        // Construir la URL de la API usando el playerToken y headers
-                        val xsrfToken = java.net.URLDecoder.decode(webCookies["XSRF-TOKEN"] ?: "", "UTF-8")
-                        val apiHeader = mapOf(
-                            "Accept" to "application/json",
-                            "Content-Type" to "application/json",
-                            "X-XSRF-TOKEN" to xsrfToken,
-                            "X-Requested-With" to "XMLHttpRequest",
-                            "Referer" to data,
-                        )
-                        // Realizar la solicitud a la API para obtener la URL del servidor
-                        try {
-                            val apiResponse = app.post(
-                                "$mainUrl/api/player-url",
-                                json = mapOf("t" to playerToken),
-                                headers = apiHeader,
-                                cookies = webCookies,
-                                timeout = 15000L
-                            ).text
-                            val jsonObject = JSONObject(apiResponse)
-                            jsonObject.optString("url").takeIf(String::isNotBlank)
-                        } catch (e: Exception) {
-                            Log.e(name, "Error al obtener la URL del servidor desde la API: ${e.message}")
-                            null
-                        }
-                    } else {
+        try {
+            // Primero, obtenemos las cookies necesarias para autenticarnos con Sanctum
+            var webCookies = mapOf<String, String>()
+            app.get("$mainUrl/sanctum/csrf-cookie", timeout = 15000L).also {
+                Log.d(name, "loadLinks - Sanctum GET HTTP ${it.code}, cookies=${it.cookies}")
+                if (it.cookies.isNotEmpty()) webCookies = webCookies + it.cookies
+            }
+            // Luego, hacemos la solicitud a la página del contenido para obtener los enlaces de los servidores
+            val response = app.get(data, cookies = webCookies, timeout = 30000L)
+            val document = response.documentLarge
+            if (response.cookies.isNotEmpty()) webCookies = webCookies + response.cookies
+            val listOfLinks = document.select("button[data-player-token], button[data-server-btn]").mapNotNull {
+                val playerToken = it.attr("data-player-token")
+                // Si el botón tiene un token, hacemos una solicitud a la API.
+                if (playerToken.isNotBlank()) {
+                    // Construir la URL de la API usando el playerToken y headers
+                    val xsrfToken = java.net.URLDecoder.decode(webCookies["XSRF-TOKEN"] ?: "", "UTF-8")
+                    val apiHeader = mapOf(
+                        "Accept" to "application/json",
+                        "Content-Type" to "application/json",
+                        "X-XSRF-TOKEN" to xsrfToken,
+                        "X-Requested-With" to "XMLHttpRequest",
+                        "Referer" to data,
+                    )
+                    // Realizar la solicitud a la API para obtener la URL del servidor
+                    try {
+                        val apiResponse = app.post(
+                            "$mainUrl/api/player-url",
+                            json = mapOf("t" to playerToken),
+                            headers = apiHeader,
+                            cookies = webCookies,
+                            timeout = 15000L
+                        ).text
+                        val jsonObject = JSONObject(apiResponse)
+                        jsonObject.optString("url").takeIf(String::isNotBlank)
+                    } catch (e: Exception) {
+                        Log.e(name, "Error al obtener la URL del servidor desde la API: ${e.message}")
                         null
                     }
+                } else {
+                    null
                 }
+            }
 
-                Log.d(name, "Enlaces encontrados: $listOfLinks")
-                // Procesar cada URL según el servicio
-                listOfLinks.amap { url ->
-                    Log.d(name, "Server: $url")
-                    when {
-                        url.contains("embed69.org") -> {
-                            Embed69Extractor.load(url, data, subtitleCallback, callback)
-                        }
-                        url.contains("xupalace.org") || url.contains("re.sololatino.net") -> {
-                            XupaLaceExtractor.load(url, data, subtitleCallback, callback)
-                        }
-                        url.contains("uqlink.php?id=") -> {
-                            url.split("id=").getOrNull(1).let {
-                                loadSourceNameExtractor(
-                                    "LAT",
-                                    "https://uqload.bz/embed-$it.html",
-                                    data,
-                                    subtitleCallback,
-                                    callback
-                                )
-                            }
-                        }
-                        else -> {
-                            loadSourceNameExtractor("LAT", url, data, subtitleCallback, callback)
+            Log.d(name, "Enlaces encontrados: $listOfLinks")
+            // Procesar cada URL según el servicio
+            listOfLinks.amap { url ->
+                Log.d(name, "Server: $url")
+                when {
+                    url.contains("embed69.org") -> {
+                        Embed69Extractor.load(url, url, subtitleCallback, callback)
+                    }
+                    url.contains("xupalace.org") || url.contains("re.sololatino.net") -> {
+                        XupaLaceExtractor.load(url, data, subtitleCallback, callback)
+                    }
+                    url.contains("uqlink.php?id=") -> {
+                        url.split("id=").getOrNull(1).let {
+                            loadSourceNameExtractor(
+                                "LAT",
+                                "https://uqload.bz/embed-$it.html",
+                                data,
+                                subtitleCallback,
+                                callback
+                            )
                         }
                     }
+                    else -> {
+                        loadSourceNameExtractor("LAT", url, data, subtitleCallback, callback)
+                    }
                 }
-                true
-            } catch (e: Exception) {
-                throw ErrorLoadingException("Error al cargar los enlaces: ${e.message}")
             }
+        } catch (e: Exception) {
+            Log.d(name,"Error al cargar los enlaces: ${e.message}")
         }
+        return true
     }
 
     // --------------------------------
@@ -303,8 +297,7 @@ class SoloLatinoProvider : MainAPI() {
         type: String?,
         score: String? = null
     ): SearchResponse {
-        val isType = getTvType(type)
-        return when (isType) {
+        return when (val isType = getTvType(type)) {
             TvType.TvSeries, TvType.AsianDrama -> newTvSeriesSearchResponse(title, href, isType) {
                 this.posterUrl = posterUrl
                 this.year = year
@@ -343,7 +336,7 @@ class SoloLatinoProvider : MainAPI() {
     private fun String.addParameter(key: String, value: String): String {
         if (key == "page" && value == "1") return this
         return try {
-            val uri = Uri.parse(this)
+            val uri = this.toUri()
             val builder = uri.buildUpon()
             builder.appendQueryParameter(key, value).build().toString()
         } catch (e: Exception) {

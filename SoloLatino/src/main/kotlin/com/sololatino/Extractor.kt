@@ -1,17 +1,12 @@
 package com.sololatino
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
-import com.lagradost.cloudstream3.utils.newExtractorLink
-import com.lagradost.cloudstream3.utils.AppUtils
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
+import com.lagradost.cloudstream3.utils.*
+import com.lagradost.cloudstream3.extractors.ByseSX
 import com.fasterxml.jackson.annotation.JsonProperty
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import android.util.Base64
 import android.util.Log
@@ -19,6 +14,11 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
+
+class ByseExtractor : ByseSX() {
+    override var mainUrl = "https://bysedikamoum.com"
+    override var name = "Byse"
+}
 
 // Extractor para Embed69
 object Embed69Extractor {
@@ -28,141 +28,85 @@ object Embed69Extractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
-        val embedResp = app.get(url)
-        val pageHtml = embedResp.text
-        val dataLinkJson = embedResp.document.select("script")
-            .firstOrNull { it.html().contains("dataLink =") }
-            ?.html()
-            ?.substringAfter("dataLink =")
-            ?.substringBefore(";")
-            ?.trim()
-            ?: run {
-                Log.e("Embed69Extractor", "No se encontró dataLink en la página: $url")
-                return
-            }
-
-        val challenge = Regex("""POW_CHALLENGE\s*=\s*['\"]([^'\"]+)['\"]""")
-            .find(pageHtml)?.groupValues?.get(1)
-        val salt = Regex("""POW_SALT\s*=\s*['\"]([^'\"]+)['\"]""")
-            .find(pageHtml)?.groupValues?.get(1)
-
-        if (challenge == null || salt == null) {
-            Log.e("Embed69Extractor", "No se pudo extraer POW_CHALLENGE o POW_SALT de: $url")
-            return
-        }
-
-        val serversByLang = AppUtils.tryParseJson<List<ServersByLang>>(dataLinkJson)
-        if (serversByLang.isNullOrEmpty()) {
-            Log.e("Embed69Extractor", "JSON de dataLink no se pudo parsear o está vacío")
-            return
-        }
-
-        val aesKey = solveEmbed69PoW(challenge, salt)
-        if (aesKey == null) {
-            Log.e("Embed69Extractor", "PoW failed para: $url")
-            return
-        }
-
-        serversByLang.amap { lang ->
-            val encryptedLinks = lang.sortedEmbeds.mapNotNull { it.link }
-            if (encryptedLinks.isEmpty()) return@amap
-            encryptedLinks.forEach { encrypted ->
-                val decryptedUrl = decryptAESLocal(encrypted, aesKey)
-                if (!decryptedUrl.isNullOrBlank()) {
-                    loadSourceNameExtractor(
-                        lang.videoLanguage ?: "Unknown",
-                        fixHostsLinks(decryptedUrl),
-                        referer,
-                        subtitleCallback,
-                        callback
-                    )
-                } else {
-                    Log.e("Embed69Extractor", "Link descifrado inválido: ${decryptedUrl}")
+        var aesKey: ByteArray
+        app.get(url).document.select("script")
+            .firstOrNull { it.html().contains("dataLink = [") }?.html()?.let {
+                val powChallenge = it.substringAfter("const POW_CHALLENGE = '").substringBefore("';")
+                val powDifficulty = it.substringAfter("const POW_DIFFICULTY = ").substringBefore(";").toInt()
+                val powSalt = it.substringAfter("const POW_SALT = '").substringBefore("';")
+                aesKey = deriveAesKey(powChallenge, powDifficulty, powSalt)
+                it
+            }?.substringAfter("dataLink = ")
+            ?.substringBefore(";")?.let {
+                AppUtils.tryParseJson<List<ServersByLang>>(it)?.amap { lang ->
+                    val links = lang.sortedEmbeds.amap { embed ->
+                        decryptAES(embed.link!!, aesKey)
+                    }
+                    links.filterNotNull().amap { link ->
+                        loadSourceNameExtractor(
+                            lang.videoLanguage!!,
+                            link,
+                            referer,
+                            subtitleCallback,
+                            callback
+                        )
+                    }
                 }
             }
-        }
     }
 
-    private suspend fun solveEmbed69PoW(challenge: String, salt: String): ByteArray? {
-        val md = MessageDigest.getInstance("SHA-256")
-        var nonce = 0L
-        val maxAttempts = 500000L
-        while (nonce < maxAttempts) {
-            val input = "$challenge$nonce".toByteArray(Charsets.UTF_8)
-            val hash = md.digest(input).joinToString("") { "%02x".format(it) }
-            if (hash.startsWith("000")) {
-                Log.d("Embed69Extractor", "PoW encontrado nonce=$nonce hash=${hash.take(8)}")
-                return MessageDigest.getInstance("SHA-256")
-                    .digest("$challenge$nonce$salt".toByteArray(Charsets.UTF_8))
+    fun deriveAesKey(challenge: String, difficulty: Int, salt: String): ByteArray {
+        val prefix = "0".repeat(difficulty)
+        var nonce: Long = 0
+        val batchSize = 5000
+
+        fun sha256Hex(input: String): String {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(input.toByteArray(Charsets.UTF_8))
+            return hash.joinToString("") { "%02x".format(it) }
+        }
+
+        fun sha256Bytes(input: String): ByteArray {
+            val digest = MessageDigest.getInstance("SHA-256")
+            return digest.digest(input.toByteArray(Charsets.UTF_8))
+        }
+
+        while (true) {
+            for (i in 0 until batchSize) {
+                val hashHex = sha256Hex(challenge + nonce)
+                if (hashHex.startsWith(prefix)) {
+                    return sha256Bytes(challenge + nonce + salt)
+                }
+                nonce++
             }
-            nonce++
-            if (nonce % 10000L == 0L) delay(1)
         }
-        return null
     }
-
-    private fun decryptAESLocal(encryptedBase64: String, aesKey: ByteArray): String? {
+    fun decryptAES(encryptedBase64: String, aesKey: ByteArray): String? {
         return try {
-            val raw = Base64.decode(encryptedBase64, Base64.NO_WRAP)
-            if (raw.size < 17) {
-                Log.e("Embed69Extractor", "AES decrypt: raw data too short (${raw.size})")
-                return null
-            }
+            val raw = Base64.decode(encryptedBase64, Base64.DEFAULT)
             val iv = raw.copyOfRange(0, 16)
             val ciphertext = raw.copyOfRange(16, raw.size)
-            if (ciphertext.isEmpty()) {
-                Log.e("Embed69Extractor", "AES decrypt: ciphertext vacío")
-                return null
-            }
-
-            val keySpec = SecretKeySpec(aesKey.copyOfRange(0, 32), "AES")
-            return try {
-                val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-                cipher.init(Cipher.DECRYPT_MODE, keySpec, IvParameterSpec(iv))
-                String(cipher.doFinal(ciphertext), Charsets.UTF_8)
-            } catch (e: Exception) {
-                Log.w("Embed69Extractor", "PKCS5Padding failed: ${e.message}, intentando NoPadding")
-                val cipher = Cipher.getInstance("AES/CBC/NoPadding")
-                cipher.init(Cipher.DECRYPT_MODE, keySpec, IvParameterSpec(iv))
-                val decrypted = cipher.doFinal(ciphertext)
-                val padByte = decrypted.last().toInt() and 0xFF
-                val padLen = if (padByte in 1..16 && decrypted.size >= padByte) padByte else 0
-                val clean = if (padLen > 0) decrypted.copyOfRange(0, decrypted.size - padLen) else decrypted
-                String(clean, Charsets.UTF_8)
-            }
+            val keyBytes = aesKey.copyOfRange(0, 32)
+            val secretKey = SecretKeySpec(keyBytes, "AES")
+            val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(iv))
+            val decrypted = cipher.doFinal(ciphertext)
+            String(decrypted, Charsets.UTF_8)
         } catch (e: Exception) {
-            Log.e("Embed69Extractor", "AES decrypt error: ${e.message}")
             null
         }
     }
-
-    //-------------------------------------//
-    //              data class             //
-    //-------------------------------------//
     data class ServersByLang(
         @JsonProperty("file_id") val fileId: String? = null,
         @JsonProperty("video_language") val videoLanguage: String? = null,
         @JsonProperty("sortedEmbeds") val sortedEmbeds: List<Server> = emptyList(),
-    ) {
-        data class Server(
-            @JsonProperty("servername") val servername: String? = null,
-            @JsonProperty("link") val link: String? = null,
-        )
-    }
-
-    data class LinksRequest(
-        val links: List<String>,
+        @JsonProperty("downloadEmbeds") val downloadEmbeds: List<Server> = emptyList(),
     )
-
-    data class Loadlinks(
-        val success: Boolean,
-        val links: List<Link>,
-    ) {
-        data class Link(
-            val index: Long,
-            val link: String,
-        )
-    }
+    data class Server(
+        @JsonProperty("servername") val servername: String? = null,
+        @JsonProperty("link") val link: String? = null,
+        @JsonProperty("type") val type: String? = null,
+    )
 }
 
 // Extractor para Xupalace
@@ -194,14 +138,12 @@ object XupaLaceExtractor {
                         Log.e("XupaLaceExtractor", "Error al procesar onclick: ${error.message}", error)
                     }.getOrNull()
                 }
-                .filterNotNull()
 
             if (langLinks.isNotEmpty()) {
                 langLinks.amap {
-                    Log.d("XupaLaceExtractor", "Host: $it")
                     loadSourceNameExtractor(
                         language,
-                        fixHostsLinks(it),
+                        it,
                         referer,
                         subtitleCallback,
                         callback
@@ -212,10 +154,7 @@ object XupaLaceExtractor {
     }
 
     private fun extractUrlFromOnclick(onclick: String): String? {
-        // Patrón 1: Match genérico URL (captura lo que esté entre comillas)
-        getFirstMatch("""['"](https?:\/\/[^'"]+)['"]""", onclick)?.let { return it }
-
-        // Patrón 2: .php?link=BASE64&servidor=...
+        // Patrón 1: .php?link=BASE64&servidor=...
         getFirstMatch("""\.php\?link=([^&]+)&servidor=""", onclick)?.let { encoded ->
             return try {
                 String(Base64.decode(encoded, Base64.DEFAULT))
@@ -224,7 +163,8 @@ object XupaLaceExtractor {
                 null
             }
         }
-
+        // Patrón 2: Match genérico URL (captura lo que esté entre comillas)
+        getFirstMatch("""['"](https?:\/\/[^'"]+)['"]""", onclick)?.let { return it }
         return null
     }
 
@@ -237,15 +177,9 @@ object XupaLaceExtractor {
 private fun fixHostsLinks(url: String): String {
     val replacements = mapOf(
         "hglink.to" to "streamwish.to",
-        "swdyu.com" to "streamwish.to",
-        "cybervynx.com" to "streamwish.to",
-        "dumbalag.com" to "streamwish.to",
-        "mivalyo.com" to "vidhidepro.com",
-        "dinisglows.com" to "vidhidepro.com",
-        "dhtpre.com" to "vidhidepro.com",
         "minochinos.com" to "vidhidepro.com",
-        "filemoon.link" to "filemoon.sx",
-        "bysedikamoum.com" to "filemoon.sx",
+        "filemoon.link" to "bysedikamoum.com",
+        "filemoon.sx" to "bysedikamoum.com",
         "sblona.com" to "watchsb.com",
         "lulu.st" to "lulustream.com",
         "uqload.io" to "uqload.com",
@@ -261,20 +195,22 @@ private fun fixHostsLinks(url: String): String {
     }
     return result
 }
-
+private val extractorCallbackScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 suspend fun loadSourceNameExtractor(
-    source: String,
+    prefix: String,
     url: String,
     referer: String? = null,
     subtitleCallback: (SubtitleFile) -> Unit,
     callback: (ExtractorLink) -> Unit,
 ) {
-    loadExtractor(url, referer, subtitleCallback) { link ->
-        CoroutineScope(Dispatchers.IO).launch {
+    val fixUrl = fixHostsLinks(url)
+    Log.d("loadExtractor", "Ori: $url -> Fix: $fixUrl")
+    loadExtractor(fixUrl, referer, subtitleCallback) { link ->
+        extractorCallbackScope.launch {
             callback.invoke(
                 newExtractorLink(
-                    "$source [${link.source}]",
-                    "$source [${link.source}]",
+                    "$prefix [${link.source}]",
+                    "$prefix [${link.source}]",
                     link.url,
                 ) {
                     this.quality = link.quality
@@ -282,6 +218,7 @@ suspend fun loadSourceNameExtractor(
                     this.referer = link.referer
                     this.headers = link.headers
                     this.extractorData = link.extractorData
+                    Log.d("loadExtractor", "Link: $link")
                 }
             )
         }

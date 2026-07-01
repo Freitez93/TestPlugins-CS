@@ -9,6 +9,7 @@ import com.lagradost.cloudstream3.plugins.Plugin
 @CloudstreamPlugin
 class SoloLatinoPlugin: Plugin() {
     override fun load() {
+        registerExtractorAPI(ByseExtractor())
         registerMainAPI(SoloLatinoProvider())
 
         this.openSettings = { ctx: Context ->
