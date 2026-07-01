@@ -19,10 +19,11 @@ object HDFullExtractor {
         callback: (ExtractorLink) -> Unit
     ) {
         val json = decodeHash(dataHash)
-        //Log.d("HDFull", "json: $json")
+        Log.d("HDFull", "json: $json")
 
         json.amap {
             val url = getUrlByProvider(it.provider, it.code)
+            Log.d("HDFull", "Url: $url")
             if (url.isNotEmpty()) {
                 loadSourceNameExtractor(fixLang(it.lang), url, referer, subtitleCallback, callback)
             }
@@ -33,12 +34,26 @@ object HDFullExtractor {
     private fun getUrlByProvider(providerIdx: String, id: String): String {
         val fixID = id.replace(" ", "")
         return when (providerIdx) {
-            "1" -> "https://powvideo.org/$fixID"
+            "1" -> "https://powvideo.net/$fixID"
             "2" -> "https://streamplay.to/$fixID"
+            "3" -> "https://fembed.com/v/$fixID"
+            "4" -> "https://doodstream.com/e/$fixID"
+            "5" -> "https://onlystream.tv/e/$fixID"
             "6" -> "https://streamtape.com/v/$fixID"
+            "7" -> "https://voe.sx/e/$fixID"
+            "8" -> "https://mixdrop.co/f/$fixID"
+            "9" -> "https://upvideo.to/e/$fixID"
+            "10" -> "https://rubystream.com/e/$fixID"
+            "11" -> "https://vidcloud.co/v/$fixID"
             "12" -> "https://gamovideo.com/$fixID"
+            "13" -> "https://filemoon.sx/e/$fixID"
+            "14" -> "https://streamwish.to/e/$fixID"
             "15" -> "https://mixdrop.bz/f/$fixID"
+            "16" -> "https://streamsss.net/e/$fixID"
+            "20" -> "https://ok.ru/video/$fixID"
+            "30" -> "https://vk.com/video_ext.php?oid=$fixID"
             "40" -> "https://vidmoly.me/w/$fixID"
+            "41" -> "https://vidmoly.me/w/$fixID"
             else -> ""
         }
     }
