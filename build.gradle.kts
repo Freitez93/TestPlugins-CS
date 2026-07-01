@@ -14,9 +14,8 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle:8.13.2")
         // Cloudstream gradle plugin which makes everything work and builds plugins
-        classpath("com.github.recloudstream:gradle:master-SNAPSHOT")
-        classpath("org.jetbrains.kotlin:kotlin-serialization:2.3.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.0")
+        classpath("com.github.recloudstream.gradle:gradle:81b1d424d2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21")
     }
 }
 
@@ -35,7 +34,6 @@ fun Project.android(configuration: BaseExtension.() -> Unit) = extensions.getByN
 subprojects {
     apply(plugin = "com.android.library")
     apply(plugin = "kotlin-android")
-    apply(plugin = "kotlinx-serialization")
     apply(plugin = "com.lagradost.cloudstream3.gradle")
 
     cloudstream {
@@ -82,15 +80,16 @@ subprojects {
         // https://github.com/recloudstream/cloudstream/blob/master/app/build.gradle.kts
         implementation(kotlin("stdlib")) // Adds Standard Kotlin Features
         implementation("com.github.Blatzar:NiceHttp:0.4.13") // HTTP Lib
-        implementation("org.jsoup:jsoup:1.21.2") // HTML Parser
+        implementation("org.jsoup:jsoup:1.22.2") // HTML Parser
         // IMPORTANT: Do not bump Jackson above 2.13.1, as newer versions will
         // break compatibility on older Android devices.
-        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.20.1") // JSON Parser
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.20.1")
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.22.0") // JSON Parser
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.22.0")
         // Other dependencies
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-        implementation("androidx.annotation:annotation:1.9.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+        implementation("androidx.annotation:annotation:1.10.0")
+        implementation("com.github.vidstige:jadb:v1.2.1")
         implementation("me.xdrop:fuzzywuzzy:1.4.0")
     }
 }
