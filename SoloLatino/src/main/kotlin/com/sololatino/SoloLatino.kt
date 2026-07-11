@@ -246,10 +246,10 @@ class SoloLatinoProvider : MainAPI() {
             listOfLinks.amap { url ->
                 Log.d(name, "Server: $url")
                 when {
-                    url.contains("embed69.org") -> {
+                    url.contains("embed69.org") || url.contains("xupalace.org") -> {
                         Embed69Extractor.load(url, url, subtitleCallback, callback)
                     }
-                    url.contains("xupalace.org") || url.contains("re.sololatino.net") -> {
+                    url.contains("re.sololatino.net") -> {
                         XupaLaceExtractor.load(url, data, subtitleCallback, callback)
                     }
                     url.contains("uqlink.php?id=") -> {

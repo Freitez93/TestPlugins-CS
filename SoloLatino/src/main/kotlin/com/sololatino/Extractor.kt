@@ -218,7 +218,6 @@ suspend fun loadSourceNameExtractor(
                     this.referer = link.referer
                     this.headers = link.headers
                     this.extractorData = link.extractorData
-                    Log.d("loadExtractor", "Link: $link")
                 }
             )
         }
